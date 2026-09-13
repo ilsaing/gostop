@@ -2829,50 +2829,79 @@ function addLog(msg){
     panel.scrollTop = panel.scrollHeight;
   }
 }
-/* 컴퓨터(컴1/컴2)가 "고"를 외쳤을 때 사람이 놓치지 않도록 화면 중앙에 배너를 잠깐 띄우고,
-   해당 컴퓨터 패널 테두리도 붉게 한 번 펄스시킨다. */
-let goToastTimer = null;
-function showGoToast(playerIdx, goCount, scoreTotal){
-  let toast = document.getElementById('goToast');
-  if(!toast){
-    toast = document.createElement('div');
-    toast.id = 'goToast';
-    document.body.appendChild(toast);
-  }
-  toast.innerHTML =
-    '<div class="go-toast-name">'+PLAYER_NAMES[playerIdx]+'</div>'+
-    '<div class="go-toast-main">고!</div>'+
-    '<div class="go-toast-sub">'+goCount+'고 · '+scoreTotal+'점</div>';
-  toast.classList.remove('show');
-  void toast.offsetWidth;
-  toast.classList.add('show');
-  if(goToastTimer) clearTimeout(goToastTimer);
-  goToastTimer = setTimeout(()=>{ toast.classList.remove('show'); }, 1800);
-  const panel = document.getElementById('opp'+playerIdx);
-  if(panel){
-    panel.classList.remove('go-pulse');
-    void panel.offsetWidth;
-    panel.classList.add('go-pulse');
-  }
+/* 피 보상 알림(뻑완성/따닥/쪽/폭탄/싹쓸이)과 "고!" 알림은 화면의 같은 자리에 뜨는 배너라,
+   한 턴에 여러 개가 이어지면(예: 폭탄 보상 직후 싹쓸이, 그 뒤 고) 겹쳐서 앞의 것이 채 안
+   보이고 다음 것으로 바뀌어버릴 수 있다. 큐에 순서대로 쌓아두고, 하나가 완전히 떴다 사라질
+   때까지 기다렸다가 다음 걸 재생해 항상 한 번에 하나씩만 보이게 한다. */
+let toastQueue = [];
+let toastBusy = false;
+function queueToast(renderFn, hideFn, duration, onDone){
+  toastQueue.push({renderFn, hideFn, duration, onDone});
+  runToastQueue();
 }
-let bonusToastTimer = null;
-function showPiBonusToast(playerIdx, eventName, gainers){
-  if(!gainers || gainers.length===0) return;
-  let toast = document.getElementById('bonusToast');
-  if(!toast){
-    toast = document.createElement('div');
-    toast.id = 'bonusToast';
-    document.body.appendChild(toast);
-  }
-  toast.innerHTML =
-    '<div class="bonus-toast-name">'+PLAYER_NAMES[playerIdx]+'</div>'+
-    '<div class="bonus-toast-main">'+eventName+'!</div>'+
-    '<div class="bonus-toast-sub">'+gainers.map(i=>PLAYER_NAMES[i]).join(', ')+'에게서 피 1장씩 받음</div>';
-  toast.classList.remove('show');
-  void toast.offsetWidth;
-  toast.classList.add('show');
-  if(bonusToastTimer) clearTimeout(bonusToastTimer);
-  bonusToastTimer = setTimeout(()=>{ toast.classList.remove('show'); }, 1800);
+function runToastQueue(){
+  if(toastBusy || !toastQueue.length) return;
+  toastBusy = true;
+  const {renderFn, hideFn, duration, onDone} = toastQueue.shift();
+  renderFn();
+  safeTimeout(()=>{
+    hideFn();
+    toastBusy = false;
+    runToastQueue();
+    if(onDone) onDone();
+  }, duration);
+}
+/* 컴퓨터(컴1/컴2)가 "고"를 외쳤을 때 사람이 놓치지 않도록 화면 중앙에 배너를 잠깐 띄우고,
+   해당 컴퓨터 패널 테두리도 붉게 한 번 펄스시킨다. onDone은 배너가 다 사라진 뒤 호출된다 —
+   호출부는 이 안에서 다음 턴 진행을 이어가야, 고 배너가 다른 알림과 겹치지 않는다. */
+function showGoToast(playerIdx, goCount, scoreTotal, onDone){
+  queueToast(()=>{
+    let toast = document.getElementById('goToast');
+    if(!toast){
+      toast = document.createElement('div');
+      toast.id = 'goToast';
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML =
+      '<div class="go-toast-name">'+PLAYER_NAMES[playerIdx]+'</div>'+
+      '<div class="go-toast-main">고!</div>'+
+      '<div class="go-toast-sub">'+goCount+'고 · '+scoreTotal+'점</div>';
+    toast.classList.remove('show');
+    void toast.offsetWidth;
+    toast.classList.add('show');
+    const panel = document.getElementById('opp'+playerIdx);
+    if(panel){
+      panel.classList.remove('go-pulse');
+      void panel.offsetWidth;
+      panel.classList.add('go-pulse');
+    }
+  }, ()=>{
+    const toast = document.getElementById('goToast');
+    if(toast) toast.classList.remove('show');
+  }, 1800, onDone);
+}
+/* onDone은 배너가 다 사라진 뒤 호출된다 — 호출부는 이 안에서 다음 진행을 이어가야 한다.
+   받을 피가 없어 배너를 안 띄우는 경우엔 그 자리에서 바로 onDone을 부른다. */
+function showPiBonusToast(playerIdx, eventName, gainers, onDone){
+  if(!gainers || gainers.length===0){ if(onDone) onDone(); return; }
+  queueToast(()=>{
+    let toast = document.getElementById('bonusToast');
+    if(!toast){
+      toast = document.createElement('div');
+      toast.id = 'bonusToast';
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML =
+      '<div class="bonus-toast-name">'+PLAYER_NAMES[playerIdx]+'</div>'+
+      '<div class="bonus-toast-main">'+eventName+'!</div>'+
+      '<div class="bonus-toast-sub">'+gainers.map(i=>PLAYER_NAMES[i]).join(', ')+'에게서 피 1장씩 받음</div>';
+    toast.classList.remove('show');
+    void toast.offsetWidth;
+    toast.classList.add('show');
+  }, ()=>{
+    const toast = document.getElementById('bonusToast');
+    if(toast) toast.classList.remove('show');
+  }, 1800, onDone);
 }
 function logPlayResult(playerIdx, card, res){
   const who=PLAYER_NAMES[playerIdx];
@@ -2890,9 +2919,10 @@ function resolvePpeokBonus(playerIdx, ppeokPending, onDone){
   ttadakBonus(playerIdx, (gains)=>{
     if(gains.length>0){
       addLog('&nbsp;&nbsp;↳ 뻑 완성: '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
-      showPiBonusToast(playerIdx, '뻑 완성', gains);
+      showPiBonusToast(playerIdx, '뻑 완성', gains, onDone);
+    } else {
+      onDone();
     }
-    onDone();
   });
 }
 
@@ -2976,30 +3006,56 @@ function humanDeclareShake(month){
 }
 function executeBomb(playerIdx, bomb){
   const hand=G.hands[playerIdx];
-  bomb.cards.forEach(c=>{ const idx=hand.indexOf(c); if(idx!==-1) hand.splice(idx,1); });
-  G.floor = G.floor.filter(c=>c!==bomb.floorCard);
-  const capturedCards = bomb.cards.concat([bomb.floorCard]);
-  G.captured[playerIdx] = G.captured[playerIdx].concat(capturedCards);
   // 폭탄은 흔들기와 같은 것으로 취급한다. 이 월로 이미 흔들기를 선언했었다면 중복으로 세지 않는다.
   if(!G.shakenMonths[playerIdx].includes(bomb.month)){
     G.shakenMonths[playerIdx].push(bomb.month);
     G.shakeCount[playerIdx]++;
     G.shakenCards[playerIdx] = (G.shakenCards[playerIdx]||[]).concat(bomb.cards);
   }
-  addLog(PLAYER_NAMES[playerIdx]+': <b>폭탄!</b> '+bomb.month+'월 3장을 동시에 내서 4장 획득');
   G.bombSkip[playerIdx] += 2;
   G.bombCandidates = [];
   if(playerIdx===HUMAN) G.phase='resolving';
-  render();
-  safeTimeout(()=>{
-    ttadakBonus(playerIdx, (gains)=>{
-      if(gains.length){
-        addLog(PLAYER_NAMES[playerIdx]+': <b>폭탄 보상!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
-        showPiBonusToast(playerIdx, '폭탄', gains);
-      }
-      doDraw(playerIdx, null, {deferred:false, captured:true, cards:capturedCards});
-    });
-  }, 650);
+  const capturedCards = bomb.cards.concat([bomb.floorCard]);
+  // 손패 3장을 한꺼번에 처리하지 않고, 손패에서 바닥으로 내려놓는 애니메이션을 한 장씩
+  // 차례대로(3번) 재생한 뒤에야 바닥의 4장을 걷어간다.
+  const playOne = (i)=>{
+    if(i>=bomb.cards.length){
+      // 손패 3장은 애니메이션 도중 이미 바닥에 하나씩 놓아뒀으므로, 바닥 카드와 함께 전부 걷어낸다.
+      G.floor = G.floor.filter(c=>!capturedCards.includes(c));
+      G.captured[playerIdx] = G.captured[playerIdx].concat(capturedCards);
+      addLog(PLAYER_NAMES[playerIdx]+': <b>폭탄!</b> '+bomb.month+'월 3장을 동시에 내서 4장 획득');
+      render();
+      safeTimeout(()=>{
+        animateCaptureSweepFrom(playerIdx, capturedCards[capturedCards.length-1], floorAnchor(), ()=>{
+          render();
+          safeTimeout(()=>{
+            ttadakBonus(playerIdx, (gains)=>{
+              const proceedDraw = ()=>doDraw(playerIdx, null, {deferred:false, captured:true, cards:capturedCards});
+              if(gains.length){
+                addLog(PLAYER_NAMES[playerIdx]+': <b>폭탄 보상!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
+                showPiBonusToast(playerIdx, '폭탄', gains, proceedDraw);
+                return;
+              }
+              proceedDraw();
+            });
+          }, 300);
+        });
+      }, 300);
+      return;
+    }
+    const card = bomb.cards[i];
+    const from = playerIdx===HUMAN ? handCardAnchor(card.id) : panelAnchor(playerIdx);
+    const idx = hand.indexOf(card);
+    if(idx!==-1) hand.splice(idx,1);
+    render();
+    const landing = floorOverlapAnchor(bomb.floorCard, 0.3) || floorAnchor();
+    flyCardVisual(card, from, landing, 300, ()=>{
+      G.floor.push(card);
+      render();
+      playOne(i+1);
+    }, false, false);
+  };
+  playOne(0);
 }
 function proceedTurn(){
   if(!G || G.roundOver) return;
@@ -3250,6 +3306,20 @@ function animateDrawnCapture(playerIdx, drawn, result, onDone, drawnFlyer){
      나중에 그 월의 마지막 패로 뻑을 완성해 가져가는 사람이 보너스 카드까지 모두 가져간다.
    - 그렇지 않으면: 보너스 카드는 낸 즉시 본인이 바로 가져간다(쌍피로 취급되어 점수에 반영됨).
    어느 경우든, 덱의 맨 위 카드 한 장을 바닥과 비교하지 않고 그대로 손패로 가져온 뒤 턴을 마친다. */
+/* 시작 패 총통과 마찬가지로, 손패에 같은 월 4장이 모이면(예: 3장을 들고 있다가 보너스
+   카드를 낸 보상으로 뽑은 패가 그 월의 마지막 한 장인 경우) 그 자리에서 3점 즉시 승리로
+   처리한다. 총통이 아니면 false를 반환해 평소 흐름을 그대로 이어가게 한다. */
+function checkMidRoundChongtong(playerIdx){
+  const byMonth={};
+  G.hands[playerIdx].forEach(c=>{ byMonth[c.month]=(byMonth[c.month]||0)+1; });
+  const month = Object.keys(byMonth).find(m=>byMonth[m]===4);
+  if(!month) return false;
+  addLog(PLAYER_NAMES[playerIdx]+': 손패에 '+month+'월 4장 — 총통!');
+  render();
+  const score={total:3, detail:['총통 3점'], gCount:0, gScore:0, tCount:0, yCount:0, piCount:0, pScore:0};
+  finalizeRound(playerIdx, score);
+  return true;
+}
 function playBonusHandCard(playerIdx, card){
   if(!G || G.roundOver) return;
   // 보너스 카드는 정상 턴에 앞서 내는 사전 동작이다: 바닥에 내려놓고, 덱 한 장을 손패로 받은 뒤
@@ -3265,6 +3335,7 @@ function playBonusHandCard(playerIdx, card){
     if(drawnCard){
       G.hands[playerIdx].push(drawnCard);
       addLog(PLAYER_NAMES[playerIdx]+': 덱에서 한 장을 손패로 가져옵니다.');
+      if(checkMidRoundChongtong(playerIdx)) return;
     }
     render();
     G.bonusPending = {cardId: card.id, playerIdx};
@@ -3392,17 +3463,22 @@ function ttadakBonus(playerIdx, onDone){
    - deferred===false 이면 손패 처리가 이미 끝난 상태(캡처 또는 그냥 냄) — 평소처럼 진행. */
 /* 뒤집은 자리(카드 중앙)에서 뒷면 → 앞면으로 뒤집히는 연출. 실제 이동(flyCardVisual)과
    같은 방식으로 safeTimeout을 써서, 자동 진행 테스트 등에서 그대로 동기적으로 건너뛸 수 있게 한다. */
-function flipCardInPlace(card, anchor, onDone, keepOnDone){
+function flipCardInPlace(card, anchor, onDone, keepOnDone, existingFlyer){
   const mySession = gameSession;
   const zf = currentZoomFactor();
-  const flyer = document.createElement('div');
-  flyer.className = 'card flyer-card back';
-  const size = anchor && anchor.w <= anchor.h ? anchor : {w:40, h:61.3};
-  const w = size.w/zf, h = size.h/zf;
-  flyer.style.width=w+'px'; flyer.style.height=h+'px';
-  flyer.style.left=(anchor.x/zf)+'px'; flyer.style.top=(anchor.y/zf)+'px';
-  document.body.appendChild(flyer);
-  void flyer.offsetWidth;
+  // 이미 그 자리에 떠 있는 뒷면 분신(existingFlyer)이 있으면 새로 만들지 않고 그대로 뒤집는다 —
+  // 안 그러면 기존 뒷면 위에 새 뒷면을 하나 더 겹쳐 그리게 되어, 뒤집히는 얇은 조각 아래로
+  // 원래 뒷면 그림이 그대로 남아있는 것처럼 보인다.
+  const flyer = existingFlyer || document.createElement('div');
+  if(!existingFlyer){
+    flyer.className = 'card flyer-card back';
+    const size = anchor && anchor.w <= anchor.h ? anchor : {w:40, h:61.3};
+    const w = size.w/zf, h = size.h/zf;
+    flyer.style.width=w+'px'; flyer.style.height=h+'px';
+    flyer.style.left=(anchor.x/zf)+'px'; flyer.style.top=(anchor.y/zf)+'px';
+    document.body.appendChild(flyer);
+    void flyer.offsetWidth;
+  }
   flyer.style.transition = 'transform .15s ease-in';
   flyer.style.transform = 'translate(-50%,-50%) scaleX(0)';
   safeTimeout(()=>{
@@ -3425,11 +3501,8 @@ function flipDeckCardToFloor(card, onDone){
   const from = deckAnchor();
   const to = floorRevealAnchor();
   if(!from || !to){ if(onDone) onDone(); return; }
-  flyCardVisual(null, from, to, 380, (backFlyer)=>{
-    flipCardInPlace(card, to, (frontFlyer)=>{
-      if(backFlyer) backFlyer.remove();
-      if(onDone) onDone(frontFlyer);
-    }, true);
+  flyCardVisual(null, from, to, 380, (flyer)=>{
+    flipCardInPlace(card, to, onDone, true, flyer);
   }, true, true);
 }
 /* 보류 중이던(덱에서 뒤집혀 바닥에 임시로 놓여있던) 보너스 카드들을 바닥에서 걷어 캡처로 확정한다. */
@@ -3624,21 +3697,21 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
         ttadakBonus(playerIdx, (gains)=>{
           if(gains.length>0){
             addLog(PLAYER_NAMES[playerIdx]+': <b>따닥!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
-            showPiBonusToast(playerIdx, '따닥', gains);
+            showPiBonusToast(playerIdx, '따닥', gains, finish);
           } else {
             addLog(PLAYER_NAMES[playerIdx]+': <b>따닥!</b> (상대에게 줄 피가 없어 보너스 없음)');
+            finish();
           }
-          finish();
         });
       } else if(isJjok){
         ttadakBonus(playerIdx, (gains)=>{
           if(gains.length>0){
             addLog(PLAYER_NAMES[playerIdx]+': <b>쪽!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
-            showPiBonusToast(playerIdx, '쪽', gains);
+            showPiBonusToast(playerIdx, '쪽', gains, finish);
           } else {
             addLog(PLAYER_NAMES[playerIdx]+': <b>쪽!</b> (상대에게 줄 피가 없어 보너스 없음)');
+            finish();
           }
-          finish();
         });
       } else {
         finish();
@@ -3657,6 +3730,23 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
   if(G.phase==='choosingCapture' && drawnFlyer) drawnFlyer.remove();
 }
 /* 9월 열끗처럼 획득 시점에 열끗/쌍피 중 고를 수 있는 카드를 처리한 뒤 afterTurn으로 넘어간다. */
+/* 9월 패를 열끗/쌍피 중 무엇으로 쓸지 정해진 뒤, 쌍피로 바뀌어 먹은 패 칸이 열끗 줄에서 피
+   줄로 옮겨가야 하는 경우 순간 이동 없이 실제로 그 칸까지 날아가는 것처럼 보여준다. 열끗
+   그대로면 칸이 안 바뀌므로 애니메이션 없이 바로 다음으로 넘어간다. */
+function animateFlexTypeResolved(playerIdx, card, onDone){
+  if(card.type!=='ssangpi'){ render(); onDone(); return; }
+  const from = capturedCardAnchor(playerIdx, card.id); // 옮기기 전(열끗 줄) 위치
+  render(); // 데이터상 이제 피 줄에 있지만, 실제 카드는 애니메이션이 끝날 때까지 숨겨둔다
+  const sel = (playerIdx===HUMAN?'#humanCap':'#oppCap'+playerIdx)+' .card[data-card-id="'+card.id+'"]';
+  const el = document.querySelector(sel);
+  if(!el){ onDone(); return; }
+  const to = rectAnchor(el);
+  el.style.visibility='hidden';
+  flyCardVisual(card, from, to, 380, ()=>{
+    el.style.visibility='';
+    onDone();
+  });
+}
 function resolveFlexThenAfterTurn(playerIdx, capturedThisTurn){
   if(!G || G.roundOver) return;
   const flexCard = G.captured[playerIdx].find(c=>c.flexible);
@@ -3668,7 +3758,7 @@ function resolveFlexThenAfterTurn(playerIdx, capturedThisTurn){
     return;
   }
   resolveFlexCardAuto(G, playerIdx, flexCard);
-  resolveFlexThenAfterTurn(playerIdx, capturedThisTurn);
+  animateFlexTypeResolved(playerIdx, flexCard, ()=>resolveFlexThenAfterTurn(playerIdx, capturedThisTurn));
 }
 function resolveFlexCardAuto(G, playerIdx, card){
   const asYeol = computeScore(G.captured[playerIdx].map(c=>c===card?Object.assign({},c,{type:'yeol'}):c)).total;
@@ -3685,8 +3775,7 @@ function chooseFlexMode(mode){
   addLog('나: 9월 패를 '+(mode==='ssangpi'?'쌍피':'열끗')+'(으)로 사용');
   G.phase='idle';
   G.flexCtx = null;
-  render();
-  resolveFlexThenAfterTurn(playerIdx, capturedThisTurn);
+  animateFlexTypeResolved(playerIdx, card, ()=>resolveFlexThenAfterTurn(playerIdx, capturedThisTurn));
 }
 function afterTurn(playerIdx, capturedThisTurn){
   if(!G || G.roundOver) return;
@@ -3704,11 +3793,13 @@ function afterTurn(playerIdx, capturedThisTurn){
   // 실제로 피가 날아가는 애니메이션이 끝난 뒤에야(피를 받아 점수에 반영된 뒤) 다음 단계로 넘어간다.
   if(capturedThisTurn && G.floor.length===0 && hasMoreTurns(playerIdx)){
     ttadakBonus(playerIdx, (gains)=>{
+      const proceedDecide = ()=>afterTurnDecide(playerIdx, capturedThisTurn);
       if(gains.length>0){
         addLog(PLAYER_NAMES[playerIdx]+': <b>싹쓸이!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
-        showPiBonusToast(playerIdx, '싹쓸이', gains);
+        showPiBonusToast(playerIdx, '싹쓸이', gains, proceedDecide);
+      } else {
+        proceedDecide();
       }
-      afterTurnDecide(playerIdx, capturedThisTurn);
     });
     return;
   }
@@ -3738,8 +3829,7 @@ function afterTurnDecide(playerIdx, capturedThisTurn){
       G.goCount[playerIdx]++;
       G.lastGoScore[playerIdx]=score.total;
       addLog(PLAYER_NAMES[playerIdx]+': "고!" ('+G.goCount[playerIdx]+'고, 현재 '+score.total+'점)');
-      showGoToast(playerIdx, G.goCount[playerIdx], score.total);
-      advanceTurn();
+      showGoToast(playerIdx, G.goCount[playerIdx], score.total, ()=>advanceTurn());
       return;
     }
   }
@@ -3756,10 +3846,9 @@ function onHumanGo(){
   G.goCount[HUMAN]++;
   G.lastGoScore[HUMAN]=G.pendingScore.total;
   addLog('나: "고!" ('+G.goCount[HUMAN]+'고, 현재 '+G.pendingScore.total+'점)');
-  showGoToast(HUMAN, G.goCount[HUMAN], G.pendingScore.total);
   G.phase='idle';
   render();
-  advanceTurn();
+  showGoToast(HUMAN, G.goCount[HUMAN], G.pendingScore.total, ()=>advanceTurn());
 }
 function onHumanStop(){
   if(!G || G.phase!=='goStopChoice') return;
