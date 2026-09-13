@@ -99,7 +99,7 @@
   .human-score-left .shake-badge{font-size:13px;}
   .shake-wrap{display:inline-flex; flex-wrap:wrap; align-items:center; gap:2px; vertical-align:middle;}
   .shake-reveal-card{margin-left:1px; box-shadow:0 0 0 1px #ff9d5c, 0 1px 2px rgba(0,0,0,.4); width:21px!important; height:32px!important;}
-  .shake-reveal-card.used{opacity:.5; filter:grayscale(60%);}
+  .shake-reveal-card.used{opacity:.4; filter:grayscale(60%);}
   .shake-reveal-card .c-month{font-size:6px!important; padding:0 2px!important;}
 
   .table-area{width:100%; background:linear-gradient(160deg,var(--felt-a),var(--felt-b)); border:1px solid var(--border); border-radius:12px; padding:10px; min-height:150px; position:relative; display:flex; gap:8px;}
@@ -152,6 +152,11 @@
   .choose-bar{width:100%; background:linear-gradient(180deg,#2a1e0c,#1c1508); border:1px solid var(--gold); border-radius:10px; padding:9px 12px; margin-bottom:8px; font-size:12px; font-weight:700; color:var(--gold); text-align:center; align-items:center; justify-content:center; flex-wrap:wrap;}
   .floor-pending-break{flex-basis:100%; height:0;}
   .card.choose-target{box-shadow:0 0 0 3px var(--gold), 0 0 10px 2px rgba(227,185,79,.7); animation:choosePulse 1s ease-in-out infinite;}
+  /* 흔들기 가능한 손패 3장 강조(안내 문구 없이 카드 자체만 표시) */
+  .card.shake-target{box-shadow:0 0 0 3px #ff9d5c, 0 0 10px 2px rgba(255,157,92,.7); animation:choosePulse 1s ease-in-out infinite;}
+  /* 고/스톱 선택창·라운드 종료 화면에서, 지금 점수에 실제로 반영된 캡처 패를 강조 표시 */
+  .card.score-highlight{box-shadow:0 0 0 3px #4ade80, 0 0 10px 2px rgba(74,222,128,.7); animation:scoreHighlightPulse 1.1s ease-in-out infinite; z-index:1;}
+  @keyframes scoreHighlightPulse{0%,100%{box-shadow:0 0 0 3px #4ade80, 0 0 10px 2px rgba(74,222,128,.7);} 50%{box-shadow:0 0 0 3px #4ade80, 0 0 16px 5px rgba(74,222,128,.95);}}
   .flyer-card{position:fixed; z-index:999; pointer-events:none; transform:translate(-50%,-50%); transition:left .38s ease, top .38s ease, width .38s ease, height .38s ease; box-shadow:0 6px 14px rgba(0,0,0,.5);}
   @keyframes choosePulse{0%,100%{transform:translateY(0);} 50%{transform:translateY(-3px);}}
 
@@ -203,8 +208,17 @@
     padding:14px 26px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.55), 0 0 0 4px rgba(227,185,79,.15);
     opacity:0; transition:opacity .25s ease, transform .25s ease;}
   #dealToast.show{opacity:1; transform:translate(-50%,-50%);}
-  #dealToast .deal-toast-main{color:var(--gold); font-size:24px; font-weight:900; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,.5); margin:2px 0;}
+  #dealToast .deal-toast-main{color:var(--gold); font-size:19px; font-weight:900; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,.5); margin:2px 0; white-space:nowrap;}
   #dealToast .deal-toast-sub{color:var(--cream); font-size:12.5px; font-weight:700;}
+  /* 총통이 나면 그 4장을 다 같이 확인할 수 있도록 잠깐 공개하는 배너 */
+  #chongtongToast{position:fixed; left:50%; top:20%; transform:translate(-50%,-40%); z-index:85; pointer-events:none;
+    background:linear-gradient(180deg,#3a1414,#2a0d0d); border:2px solid var(--gold); border-radius:14px;
+    padding:14px 22px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.55), 0 0 0 4px rgba(227,185,79,.2);
+    opacity:0; transition:opacity .25s ease, transform .25s ease;}
+  #chongtongToast.show{opacity:1; transform:translate(-50%,-50%);}
+  #chongtongToast .chongtong-toast-name{color:var(--cream); font-size:14px; font-weight:700; letter-spacing:1px;}
+  #chongtongToast .chongtong-toast-main{color:var(--gold); font-size:20px; font-weight:900; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,.5); margin:2px 0; white-space:nowrap;}
+  #chongtongToast .chongtong-toast-cards{display:flex; gap:4px; justify-content:center; margin-top:8px;}
   #overlayCard{background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--gold); border-radius:14px; padding:24px 22px; text-align:center; max-width:340px; width:100%; box-shadow:0 14px 30px rgba(0,0,0,.5);}
   #overlayTitle{font-family:'Noto Sans KR',sans-serif; font-weight:900; font-size:21px; color:var(--gold); margin-bottom:10px;}
   #overlayBody{font-size:12.5px; color:var(--cream); text-align:left; line-height:1.8; margin-bottom:18px; background:var(--panel-darker); border-radius:8px; padding:10px 12px;}
@@ -264,7 +278,7 @@
   .gallery-card-item .card .c-month{font-size:9.5px;}
   .gallery-card-item .card.ssangpi::after{width:14.4px;height:14.4px;font-size:9px; line-height:1;}
   .gallery-card-label{font-size:10px; line-height:14px; height:14px; color:var(--muted); text-align:center; white-space:nowrap;}
-  .gallery-card-item.captured .card{opacity:.5; filter:grayscale(60%);}
+  .gallery-card-item.captured .card{opacity:.4; filter:grayscale(60%);}
   .gallery-card-item.captured .gallery-card-label{opacity:.45;}
   @media (min-width:1280px) and (min-height:640px){
     .gallery-modal-inner{max-height:58.6667vh;}
@@ -1884,6 +1898,41 @@ function computeScore(capturedCards){
   return {total, detail, gCount, gScore, tCount, yCount, piCount, pScore};
 }
 
+/* computeScore와 같은 기준으로, 지금 점수에 실제로 반영되고 있는 패들만 골라 id 집합으로
+   돌려준다 — 고/스톱 선택창이나 라운드 종료 화면에서 "이 패들 덕분에 점수가 났다"를 캡처
+   패널에 강조 표시하는 데 쓴다. */
+function scoringCardIds(capturedCards){
+  const ids = new Set();
+  const gwang = capturedCards.filter(c=>c.type==='gwang');
+  const yeol = capturedCards.filter(c=>c.type==='yeol');
+  const tti = capturedCards.filter(c=>c.type==='tti');
+  const pi = capturedCards.filter(c=>c.type==='pi');
+  const ssangpi = capturedCards.filter(c=>c.type==='ssangpi');
+  const piCount = pi.length + ssangpi.length*2;
+
+  const gCount=gwang.length;
+  const hasRain = gwang.some(c=>c.month===12);
+  let gScore=0;
+  if(gCount===5) gScore=15;
+  else if(gCount===4) gScore=4;
+  else if(gCount===3) gScore = hasRain?2:3;
+  if(gScore>0) gwang.forEach(c=>ids.add(c.id));
+
+  if(tti.length>=5) tti.forEach(c=>ids.add(c.id));
+  ['hong','cho','cheong'].forEach(color=>{
+    const sameColor = tti.filter(c=>c.ttiType===color);
+    if(sameColor.length>=3) sameColor.forEach(c=>ids.add(c.id));
+  });
+
+  if(yeol.length>=5) yeol.forEach(c=>ids.add(c.id));
+  const birds = yeol.filter(c=>c.bird);
+  if(birds.length>=3) birds.forEach(c=>ids.add(c.id));
+
+  if(piCount>=10){ pi.forEach(c=>ids.add(c.id)); ssangpi.forEach(c=>ids.add(c.id)); }
+
+  return ids;
+}
+
 /* 이 패(들)를 이미 가진 사람의 먹은 패에 더했을 때 점수 문턱에 얼마나 가까워지는지 어림한다.
    실제 총점이 오르는 경우는 크게, 광/단/고도리/피 문턱을 코앞에서 완성시키는 경우는 별도 가산점을 준다.
    handPile을 넘기면(본인 손패를 들여다볼 수 있는 "내 관점" 판단에서만 사용 — 상대방 위협 판단에는
@@ -2734,6 +2783,7 @@ function startRound(){
   G.captured=[[],[],[]]; G.goCount=[0,0,0]; G.lastGoScore=[null,null,null]; G.bombSkip=[0,0,0];
   G.ppeokMakeCount=[0,0,0]; // 이번 판에서 각자 뻑을 만든 횟수(3회째에 즉시 3점 승리)
   G.shakeCount=[0,0,0]; G.shakenMonths=[[],[],[]]; G.shakenCards=[[],[],[]];
+  G.scoreHighlight = null;
   G.turn=G.dealer; G.log=[]; G.phase='idle'; G.roundOver=false;
   document.getElementById('roundNum').textContent=G.round;
   // 방금 나눠준 손패 7장·바닥 6장을 보너스/총통/4장 특수 처리 전 그대로 먼저 보여준다 —
@@ -2760,7 +2810,10 @@ function processInitialChongtong(){
       addLog(PLAYER_NAMES[winner.p]+': 시작 패에 '+winner.month+'월 4장 — 총통!');
     }
     const score={total:3, detail:['총통 3점'], gCount:0, gScore:0, tCount:0, yCount:0, piCount:0, pScore:0};
-    finalizeRound(winner.p, score);
+    const winnerCards = G.hands[winner.p].filter(c=>c.month===winner.month);
+    showChongtongToast(winner.p, winner.month, winnerCards, ()=>{
+      finalizeRound(winner.p, score);
+    });
     return;
   }
   processInitialFloorBonusCard();
@@ -2846,12 +2899,16 @@ function runToastQueue(){
   if(toastBusy || !toastQueue.length) return;
   toastBusy = true;
   const {renderFn, hideFn, duration, onDone} = toastQueue.shift();
+  const mySession = gameSession;
   renderFn();
-  safeTimeout(()=>{
+  // 토스트 자체의 정리(숨기기, busy 해제, 다음 항목 진행)는 세션이 바뀌어도 항상 실행해야
+  // 한다 — safeTimeout으로 감싸면 그 사이 나가기/재시작이 있었을 때 toastBusy가 영원히
+  // true로 남아 이후 모든 토스트가 멈춰버린다. 게임 상태를 건드리는 onDone만 세션을 확인한다.
+  setTimeout(()=>{
     hideFn();
     toastBusy = false;
     runToastQueue();
-    if(onDone) onDone();
+    if(onDone && gameSession===mySession) onDone();
   }, duration);
 }
 /* 컴퓨터(컴1/컴2)가 "고"를 외쳤을 때 사람이 놓치지 않도록 화면 중앙에 배너를 잠깐 띄우고,
@@ -2918,7 +2975,7 @@ function showDealToast(dealerIdx, onDone){
       document.body.appendChild(toast);
     }
     toast.innerHTML =
-      '<div class="deal-toast-main">카드 분배 완료</div>'+
+      '<div class="deal-toast-main">카드 배분 완료</div>'+
       '<div class="deal-toast-sub">'+PLAYER_NAMES[dealerIdx]+'(이)가 선으로 시작합니다</div>';
     toast.classList.remove('show');
     void toast.offsetWidth;
@@ -2927,6 +2984,30 @@ function showDealToast(dealerIdx, onDone){
     const toast = document.getElementById('dealToast');
     if(toast) toast.classList.remove('show');
   }, 1800, onDone);
+}
+/* 총통이 나면 그 4장을 실제로 보여준 뒤에야 라운드를 종료한다 — 상대 손패라도 총통은
+   그 자리에서 공개되는 패라 다 같이 확인할 수 있어야 한다. onDone은 배너가 사라진 뒤
+   호출된다. */
+function showChongtongToast(playerIdx, month, cards, onDone){
+  queueToast(()=>{
+    let toast = document.getElementById('chongtongToast');
+    if(!toast){
+      toast = document.createElement('div');
+      toast.id = 'chongtongToast';
+      document.body.appendChild(toast);
+    }
+    const cardsHtml = sortByMonth(cards).map(c=>makeCardEl(c, true).outerHTML).join('');
+    toast.innerHTML =
+      '<div class="chongtong-toast-name">'+PLAYER_NAMES[playerIdx]+'</div>'+
+      '<div class="chongtong-toast-main">총통! '+month+'월 4장</div>'+
+      '<div class="chongtong-toast-cards">'+cardsHtml+'</div>';
+    toast.classList.remove('show');
+    void toast.offsetWidth;
+    toast.classList.add('show');
+  }, ()=>{
+    const toast = document.getElementById('chongtongToast');
+    if(toast) toast.classList.remove('show');
+  }, 2600, onDone);
 }
 function logPlayResult(playerIdx, card, res){
   const who=PLAYER_NAMES[playerIdx];
@@ -3081,6 +3162,7 @@ function executeBomb(playerIdx, bomb){
 }
 function proceedTurn(){
   if(!G || G.roundOver) return;
+  G.scoreHighlight = null; // 다음 차례가 시작되면 직전 고/스톱 강조 표시는 지운다
   if(checkHandsEmpty()){ endRoundByExhaustion(); return; }
   if(!hasMoreTurns(G.turn)){ advanceTurn(); return; }
   if(G.bombSkip[G.turn]>0){
@@ -3339,7 +3421,10 @@ function checkMidRoundChongtong(playerIdx){
   addLog(PLAYER_NAMES[playerIdx]+': 손패에 '+month+'월 4장 — 총통!');
   render();
   const score={total:3, detail:['총통 3점'], gCount:0, gScore:0, tCount:0, yCount:0, piCount:0, pScore:0};
-  finalizeRound(playerIdx, score);
+  const winnerCards = G.hands[playerIdx].filter(c=>c.month===Number(month));
+  showChongtongToast(playerIdx, month, winnerCards, ()=>{
+    finalizeRound(playerIdx, score);
+  });
   return true;
 }
 function playBonusHandCard(playerIdx, card){
@@ -3511,12 +3596,18 @@ function flipDeckCardToFloor(card, onDone){
     flipCardInPlace(card, to, onDone, true, flyer);
   }, true, true);
 }
-/* 보류 중이던(덱에서 뒤집혀 바닥에 임시로 놓여있던) 보너스 카드들을 바닥에서 걷어 캡처로 확정한다. */
+/* 보류 중이던(덱에서 뒤집혀 바닥에 임시로 놓여있던) 보너스 카드들을 바닥에서 걷어 캡처로 확정한다.
+   실제 바닥 위치를 먼저 측정해 둔 뒤 배열을 옮기고 다시 그려서, 사라지는 순간과 캡처 패널로
+   날아가는 분신이 자연스럽게 이어지도록 한다(다른 카드 이동과 동일한 방식). */
 function claimRevealedBonusCards(playerIdx, revealedBonusCards){
   if(!revealedBonusCards.length) return;
   const ids = new Set(revealedBonusCards.map(c=>c.id));
+  const anchors = revealedBonusCards.map(c=>({card:c, from: floorOverlapAnchor(c,0) || floorAnchor()}));
   G.floor = G.floor.filter(c=>!ids.has(c.id));
   G.captured[playerIdx] = G.captured[playerIdx].concat(revealedBonusCards);
+  render();
+  const to = capturedPanelAnchor(playerIdx);
+  anchors.forEach(({card,from})=>{ flyCardVisual(card, from, to, 420, null, false, false); });
 }
 function doDraw(playerIdx, handCard, handRes){
   if(!G || G.roundOver) return;
@@ -3738,13 +3829,13 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
   if(G.phase==='choosingCapture' && drawnFlyer) drawnFlyer.remove();
 }
 /* 9월 열끗처럼 획득 시점에 열끗/쌍피 중 고를 수 있는 카드를 처리한 뒤 afterTurn으로 넘어간다. */
-/* 9월 패를 열끗/쌍피 중 무엇으로 쓸지 정해진 뒤, 쌍피로 바뀌어 먹은 패 칸이 열끗 줄에서 피
-   줄로 옮겨가야 하는 경우 순간 이동 없이 실제로 그 칸까지 날아가는 것처럼 보여준다. 열끗
-   그대로면 칸이 안 바뀌므로 애니메이션 없이 바로 다음으로 넘어간다. */
+/* 9월 패는 아직 선택 전(flexible)에도 기본값인 쌍피로 쳐서 피 줄에 먼저 놓인다(renderCapturedGrid).
+   그래서 최종적으로 쌍피면 칸이 안 바뀌어 애니메이션이 필요 없고, 열끗을 선택했을 때만 피 줄에서
+   열끗 줄로 옮겨가야 하므로 순간 이동 없이 실제로 그 칸까지 날아가는 것처럼 보여준다. */
 function animateFlexTypeResolved(playerIdx, card, onDone){
-  if(card.type!=='ssangpi'){ render(); onDone(); return; }
-  const from = capturedCardAnchor(playerIdx, card.id); // 옮기기 전(열끗 줄) 위치
-  render(); // 데이터상 이제 피 줄에 있지만, 실제 카드는 애니메이션이 끝날 때까지 숨겨둔다
+  if(card.type!=='yeol'){ render(); onDone(); return; }
+  const from = capturedCardAnchor(playerIdx, card.id); // 옮기기 전(피 줄) 위치
+  render(); // 데이터상 이제 열끗 줄에 있지만, 실제 카드는 애니메이션이 끝날 때까지 숨겨둔다
   const sel = (playerIdx===HUMAN?'#humanCap':'#oppCap'+playerIdx)+' .card[data-card-id="'+card.id+'"]';
   const el = document.querySelector(sel);
   if(!el){ onDone(); return; }
@@ -3791,10 +3882,13 @@ function afterTurn(playerIdx, capturedThisTurn){
     const pendingBonus = G.floor.find(c=>c.id===G.bonusPending.cardId);
     G.bonusPending = null;
     if(pendingBonus && pendingBonus.ppeokOwner===undefined){
+      const from = floorOverlapAnchor(pendingBonus,0) || floorAnchor();
       G.floor = G.floor.filter(c=>c.id!==pendingBonus.id);
       G.captured[playerIdx] = G.captured[playerIdx].concat([pendingBonus]);
       addLog(PLAYER_NAMES[playerIdx]+': 이번 턴엔 뻑이 나지 않아 보너스 카드를 획득합니다.');
       capturedThisTurn = true;
+      render();
+      flyCardVisual(pendingBonus, from, capturedPanelAnchor(playerIdx), 420, null, false, false);
     }
   }
   // 싹쓸이: 먹고 나서 바닥에 한 장도 안 남으면 보너스. 단, 손에 남은 마지막 패로 낸 경우는 제외.
@@ -3830,6 +3924,7 @@ function afterTurnDecide(playerIdx, capturedThisTurn){
     if(playerIdx===HUMAN){
       G.phase='goStopChoice';
       G.pendingScore=score;
+      G.scoreHighlight = {playerIdx: HUMAN, ids: scoringCardIds(G.captured[HUMAN])};
       render();
       return;
     } else {
@@ -3838,6 +3933,8 @@ function afterTurnDecide(playerIdx, capturedThisTurn){
       G.goCount[playerIdx]++;
       G.lastGoScore[playerIdx]=score.total;
       addLog(PLAYER_NAMES[playerIdx]+': "고!" ('+G.goCount[playerIdx]+'고, 현재 '+score.total+'점)');
+      G.scoreHighlight = {playerIdx, ids: scoringCardIds(G.captured[playerIdx])};
+      render();
       showGoToast(playerIdx, G.goCount[playerIdx], score.total, ()=>advanceTurn());
       return;
     }
@@ -3900,6 +3997,9 @@ function finalizeRound(winnerIdx, baseScore){
   declarePendingShakes(winnerIdx);
   G.roundOver=true;
   G.lastWinner=winnerIdx;
+  // 스톱으로 라운드가 끝나는 순간, 그 사람의 캡처 패널에서 실제로 점수에 반영된 패들을
+  // 강조 표시할 수 있도록 표시해 둔다(총통 등 문턱 조합이 없는 승리는 강조할 패가 없을 수 있다).
+  G.scoreHighlight = {playerIdx: winnerIdx, ids: scoringCardIds(G.captured[winnerIdx])};
   const isChongtong = (baseScore.detail||[]).includes('총통 3점');
   const goCount=G.goCount[winnerIdx];
   const goMultiplier = goCount>=3 ? Math.pow(2, goCount-2) : 1;
@@ -4058,7 +4158,7 @@ function render(){
         '<span></span>'+
       '</div>'+
       '<div class="opp-cap" id="oppCap'+i+'"></div>';
-    renderCapturedGrid(document.getElementById('oppCap'+i), G.captured[i]);
+    renderCapturedGrid(document.getElementById('oppCap'+i), G.captured[i], (G.scoreHighlight && G.scoreHighlight.playerIdx===i) ? G.scoreHighlight.ids : null);
   }
 
   const floorEl=document.getElementById('floorCards');
@@ -4111,7 +4211,7 @@ function render(){
   document.getElementById('humanScoreVal').innerHTML=hScore.total+'점'+hGoTag;
   document.getElementById('humanDetail').textContent = hScore.detail.length ? '  ('+hScore.detail.join(', ')+')' : '';
   document.getElementById('humanPanel').classList.toggle('active', G.turn===HUMAN && !G.roundOver);
-  renderCapturedGrid(document.getElementById('humanCap'), G.captured[HUMAN]);
+  renderCapturedGrid(document.getElementById('humanCap'), G.captured[HUMAN], (G.scoreHighlight && G.scoreHighlight.playerIdx===HUMAN) ? G.scoreHighlight.ids : null);
 
   const handEl=document.getElementById('handRow');
   handEl.innerHTML='';
@@ -4119,6 +4219,8 @@ function render(){
   const bombCardIds = (G.phase==='humanPlay' && G.bombCandidates && G.bombCandidates.length)
     ? new Set(G.bombCandidates.flatMap(b=>b.cards.map(c=>c.id)))
     : null;
+  // 흔들기 가능 안내 문구 대신, 그 월 3장을 손패에서 직접 강조 표시만 한다.
+  const shakeMonths = (G.phase==='humanPlay' && !G.roundOver) ? new Set(checkShakeCandidates(HUMAN)) : null;
   sortByMonth(G.hands[HUMAN]).forEach(card=>{
     const el=makeCardEl(card,false);
     if(clickable){
@@ -4126,6 +4228,7 @@ function render(){
       el.onclick=()=>humanPlayCard(card.id);
     }
     if(bombCardIds && bombCardIds.has(card.id)) el.classList.add('choose-target');
+    else if(shakeMonths && shakeMonths.has(card.month)) el.classList.add('shake-target');
     handEl.appendChild(el);
   });
 
@@ -4180,24 +4283,31 @@ function makeCardEl(card, mini){
   div.innerHTML=cardSVG(card)+'<div class="c-month">'+(card.isBonus?'':card.month)+'</div>';
   return div;
 }
-function renderCapturedGrid(el, cards){
+function renderCapturedGrid(el, cards, highlightIds){
   if(!el) return;
   el.innerHTML='';
   if(!cards.length){ el.innerHTML='<div class="cap-empty">아직 가져온 패가 없습니다</div>'; return; }
+  // 9월 패는 열끗/쌍피 중 아직 정해지지 않은 동안(flexible)에도 쌍피가 기본값이므로,
+  // 열끗 줄이 아니라 피 줄에 먼저 자리잡은 채로 보여준다 — 나중에 실제로 열끗을 선택하면
+  // 그때 열끗 줄로 옮겨가는 애니메이션이 재생된다(animateFlexTypeResolved).
   const cats=[
     {label:'광', list:cards.filter(c=>c.type==='gwang')},
-    {label:'열끗', list:cards.filter(c=>c.type==='yeol')},
+    {label:'열끗', list:cards.filter(c=>c.type==='yeol' && !c.flexible)},
     {label:'띠', list:cards.filter(c=>c.type==='tti')},
-    {label:'피', list:cards.filter(c=>c.type==='pi'||c.type==='ssangpi')}
+    {label:'피', list:cards.filter(c=>c.type==='pi'||c.type==='ssangpi'||(c.type==='yeol'&&c.flexible))}
   ];
   cats.forEach(cat=>{
     if(!cat.list.length) return;
     const row=document.createElement('div'); row.className='cap-row';
-    const count = cat.label==='피' ? cat.list.reduce((s,c)=>s+(c.type==='ssangpi'?2:1),0) : cat.list.length;
+    const count = cat.label==='피' ? cat.list.reduce((s,c)=>s+((c.type==='ssangpi'||c.flexible)?2:1),0) : cat.list.length;
     const lbl=document.createElement('div'); lbl.className='cap-label'; lbl.textContent=cat.label+' '+count;
     row.appendChild(lbl);
     const wrap=document.createElement('div'); wrap.className='cap-cards';
-    cat.list.forEach(c=>wrap.appendChild(makeCardEl(c,true)));
+    cat.list.forEach(c=>{
+      const cardEl = makeCardEl(c,true);
+      if(highlightIds && highlightIds.has(c.id)) cardEl.classList.add('score-highlight');
+      wrap.appendChild(cardEl);
+    });
     row.appendChild(wrap);
     el.appendChild(row);
   });
@@ -4210,6 +4320,15 @@ function showRoundEndOverlay(winnerIdx, baseScore, goCount, multiplier, finalSco
   const title = byExhaustion ? (displayName(winnerIdx)+' 고 자동승리') : (displayName(winnerIdx)+' 스톱! 승리');
   let body = '<b>'+PLAYER_NAMES[winnerIdx]+'</b> 기본 '+baseScore.total+'점';
   if(baseScore.detail.length) body += ' ('+baseScore.detail.join(', ')+')';
+  // 이 종료 팝업은 화면 전체를 덮어서 뒤쪽 캡처 패널의 강조 표시가 안 보이므로, 점수를
+  // 만든 카드들을 팝업 안에 직접 작게 보여준다.
+  const scoreIds = scoringCardIds(G.captured[winnerIdx]);
+  if(scoreIds.size){
+    const scoreCards = sortByMonth(G.captured[winnerIdx].filter(c=>scoreIds.has(c.id)));
+    body += '<div style="display:flex; gap:3px; flex-wrap:wrap; margin:8px 0;">'+
+      scoreCards.map(c=>{ const el=makeCardEl(c,true); el.classList.add('score-highlight'); return el.outerHTML; }).join('')+
+      '</div>';
+  }
   if(goCount>0) body += '<br>+'+goCount+'고 = '+(baseScore.total+goCount)+'점';
   const shakeN = G.shakeCount[winnerIdx]||0;
   if(shakeN>0) body += '<br>흔들기·폭탄 '+shakeN+'회 → x'+Math.pow(2,shakeN);
@@ -4324,6 +4443,7 @@ function uiExitGame(onCancel){
     clearOverlayAutoTimer();
     gameSession++;
     clearAutoPlayTimer();
+    document.querySelectorAll('.flyer-card').forEach(el=>el.remove()); // 확인창이 떠 있는 동안 새로 생겨난 분신까지 마저 정리
     document.getElementById('overlay').style.display='none';
     document.getElementById('game').style.display='none';
     document.getElementById('setup').style.display='block';
