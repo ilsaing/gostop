@@ -98,7 +98,7 @@
   .shake-badge{font-weight:700; color:#fff; background:#c0392b; border-radius:5px; padding:0 6px; vertical-align:middle; margin-left:3px; white-space:nowrap; line-height:1.6;}
   .human-score-left .shake-badge{font-size:13px;}
   .shake-wrap{display:inline-flex; flex-wrap:wrap; align-items:center; gap:2px; vertical-align:middle;}
-  .shake-reveal-card{margin-left:1px; box-shadow:0 0 0 1px #ff9d5c, 0 1px 2px rgba(0,0,0,.4); width:20.8px!important; height:31.9px!important;}
+  .shake-reveal-card{margin-left:1px; box-shadow:0 0 0 1px #ff9d5c, 0 1px 2px rgba(0,0,0,.4); width:21px!important; height:32px!important;}
   .shake-reveal-card.used{opacity:.5; filter:grayscale(60%);}
   .shake-reveal-card .c-month{font-size:6px!important; padding:0 2px!important;}
 
@@ -107,16 +107,16 @@
   .deck-count{font-size:11px; color:var(--muted); font-weight:700;}
   /* 덱을 카드 여러 장이 쌓인 것처럼 입체적으로 보이도록, 남은 장수에 따라 뒤로 살짝씩
      어긋난 겹침 레이어를 몇 장 더 그려 두께감을 준다. */
-  .deck-stack{position:relative; width:40px; height:61.3px;}
+  .deck-stack{position:relative; width:40px; height:62px;}
   .deck-stack .card{position:absolute; top:0; left:0; margin:0;}
   .deck-stack .card.deck-empty{background:transparent; border:2px dashed var(--border); box-shadow:none;}
   .floor-cards{flex:1; display:flex; flex-wrap:wrap; gap:5px; align-content:flex-start;}
 
-  .card{width:40px;height:61.3px;border-radius:7px; background:#fdfbf5; border:2px solid #e8102e; display:flex; align-items:center; justify-content:center; position:relative; box-shadow:0 2px 3px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.5); flex-shrink:0; overflow:hidden;}
+  .card{width:40px;height:62px;border-radius:7px; background:#fdfbf5; border:2px solid #e8102e; display:flex; align-items:center; justify-content:center; position:relative; box-shadow:0 2px 3px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.5); flex-shrink:0; overflow:hidden;}
   .card svg{width:100%; height:100%; display:block;}
   .card .c-month{position:absolute; top:2px; left:2px; font-size:9.5px; color:#fff; font-weight:900; background:rgba(0,0,0,.55); border-radius:4px; padding:0 4px; line-height:1.5; z-index:2;}
   html[data-hide-labels="1"] .c-month{display:none;}
-  .card.mini{width:26px; height:39.9px; border-radius:6px; border-width:1px;}
+  .card.mini{width:26px; height:40px; border-radius:6px; border-width:1px;}
   .card.mini .c-month{font-size:7.5px; padding:0 3px;}
   .card.ssangpi::after{content:'2';position:absolute; bottom:2px; right:3px; font-size:8px; line-height:1; background:#d81b60; color:#fff; border-radius:50%; width:11px; height:11px; display:flex; align-items:center; justify-content:center; font-weight:700; z-index:2; box-shadow:0 1px 2px rgba(0,0,0,.5);}
   .card.mini.ssangpi::after{width:9px;height:9px;font-size:6.5px; line-height:1;}
@@ -196,6 +196,15 @@
   #bonusToast .bonus-toast-name{color:var(--cream); font-size:14px; font-weight:700; letter-spacing:1px;}
   #bonusToast .bonus-toast-main{color:#ffb04f; font-size:27px; font-weight:900; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,.5); margin:2px 0;}
   #bonusToast .bonus-toast-sub{color:#ffd39a; font-size:12.5px; font-weight:700;}
+  /* 판이 시작될 때 카드를 막 나눠준 직후 잠깐 띄우는 안내 배너 — 컴퓨터가 곧바로 진행해버려
+     초기 배분을 놓치지 않도록 텀을 준다. */
+  #dealToast{position:fixed; left:50%; top:22%; transform:translate(-50%,-40%); z-index:80; pointer-events:none;
+    background:linear-gradient(180deg,#14243b,#0d1a2b); border:2px solid var(--gold); border-radius:14px;
+    padding:14px 26px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.55), 0 0 0 4px rgba(227,185,79,.15);
+    opacity:0; transition:opacity .25s ease, transform .25s ease;}
+  #dealToast.show{opacity:1; transform:translate(-50%,-50%);}
+  #dealToast .deal-toast-main{color:var(--gold); font-size:24px; font-weight:900; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,.5); margin:2px 0;}
+  #dealToast .deal-toast-sub{color:var(--cream); font-size:12.5px; font-weight:700;}
   #overlayCard{background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--gold); border-radius:14px; padding:24px 22px; text-align:center; max-width:340px; width:100%; box-shadow:0 14px 30px rgba(0,0,0,.5);}
   #overlayTitle{font-family:'Noto Sans KR',sans-serif; font-weight:900; font-size:21px; color:var(--gold); margin-bottom:10px;}
   #overlayBody{font-size:12.5px; color:var(--cream); text-align:left; line-height:1.8; margin-bottom:18px; background:var(--panel-darker); border-radius:8px; padding:10px 12px;}
@@ -218,9 +227,9 @@
     .col-human{ width:300px; flex-shrink:0; order:1; }
     .col-center{ flex:1; min-width:0; order:2; }
     .floor-cards{ gap:4px; }
-    .floor-cards .card{ width:36px; height:55.17px; }
+    .floor-cards .card{ width:36px; height:56px; }
     .hand-row{ gap:4px; flex-wrap:nowrap; }
-    .hand-row .card{ width:36px; height:55.17px; }
+    .hand-row .card{ width:36px; height:56px; }
     .log-panel{ height:128px; }
   }
   /* 휴대폰 가로모드: 너비는 넓지만 높이가 얼마 없는 경우. 확대 없이 가로 폭을 활용한 3단
@@ -239,8 +248,8 @@
     .col-center{ flex:1; min-width:0; order:2; }
     .table-area{ min-height:110px; padding:7px; }
     .log-panel{ height:64px; margin:6px 0; }
-    .card{ width:34px; height:52px; }
-    .card.mini{ width:22px; height:33.8px; }
+    .card{ width:34px; height:53px; }
+    .card.mini{ width:22px; height:34px; }
   }  .gallery-modal{position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:1000; display:flex; align-items:center; justify-content:center; padding:16px;}
   .gallery-modal-inner{width:100%; max-width:640px; max-height:88vh; background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--border); border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.5); display:flex; flex-direction:column; overflow:hidden;}
   .gallery-modal-header{display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--border);}
@@ -251,7 +260,7 @@
   .gallery-month-title{color:var(--gold); font-weight:700; font-size:13px; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid var(--border);}
   .gallery-month-cards{display:flex; flex-wrap:wrap; justify-content:space-between; gap:14px;}
   .gallery-card-item{display:flex; flex-direction:column; align-items:center; gap:4px;}
-  .gallery-card-item .card{width:55.8px; height:86px; border-radius:8px; border-width:2px;}
+  .gallery-card-item .card{width:56px; height:86px; border-radius:8px; border-width:2px;}
   .gallery-card-item .card .c-month{font-size:9.5px;}
   .gallery-card-item .card.ssangpi::after{width:14.4px;height:14.4px;font-size:9px; line-height:1;}
   .gallery-card-label{font-size:10px; line-height:14px; height:14px; color:var(--muted); text-align:center; white-space:nowrap;}
@@ -305,7 +314,7 @@
         <b>11월·9월 특수 규칙</b> — 11월 열끗은 항상 쌍피로 취급됩니다. 9월 열끗은 가져올 때 열끗과 쌍피 중 원하는 쪽으로 선택해서 쓸 수 있습니다.<br><br>
         <b>초기 배분 특수 상황</b> — 시작할 때 바닥에 같은 월이 3장 깔리면 뻑과 똑같이 묶여서, 나중에 그 월 마지막 한 장으로 가져가는 사람이 다른 두 명에게서 피를 1장씩 받습니다. 같은 월 4장이 통째로 깔리면 선이 그대로 가져갑니다.<br><br>
         <b>총통</b> — 시작 손패 7장에 같은 월 4장을 모두 가진 사람이 있으면 그 자리에서 3점으로 즉시 승리합니다. 두 명 이상이 동시에 총통이면 월이 더 높은 쪽이 승리합니다.<br><br>
-        <b>흔들기</b> — 같은 월 3장을 손에 들고 있으면 화면에 뜨는 버튼으로 미리 "흔들기"를 선언할 수도 있고, 따로 선언하지 않았더라도 그 3장 중 한 장을 실제로 낼 때(1장만 내든, 폭탄으로 내든) 자동으로 흔든 것으로 처리됩니다. 흔들기를 선언(또는 자동 인정)한 상태로 그 판에서 승리하면 최종 점수가 2배가 되고, 서로 다른 월로 두 번 흔들면 4배가 됩니다.<br><br>
+        <b>흔들기</b> — 같은 월 3장을 손에 들고 있다가 그 중 한 장을 실제로 낼 때(1장만 내든, 폭탄으로 내든) 자동으로 흔든 것으로 처리됩니다. 흔들기가 인정된 상태로 그 판에서 승리하면 최종 점수가 2배가 되고, 서로 다른 월로 두 번 흔들면 4배가 됩니다.<br><br>
         <b>폭탄</b> — 같은 월 3장을 손에 들고 있다가 자신의 차례에 그 월의 마지막 한 장이 바닥에 깔려 있으면, 3장을 한꺼번에 내서 4장을 가져올 수 있습니다. 반짝이는 해당 카드를 탭하면 확인 없이 바로 폭탄으로 나갑니다(두 월이 동시에 조건을 만족하면 탭한 카드의 월로 폭탄이 나갑니다). 다른 두 명에게서 피를 1장씩 받고, 대신 이후 두 번은 자신의 차례가 와도 그때그때 <b>패를 낼지 젖히기만 할지 선택</b>할 수 있습니다(손패가 없으면 자동으로 젖히기만 함). 폭탄도 흔들기와 같은 것으로 취급되어 승리 시 점수 2배 배율에 포함됩니다(단, 그 월로 이미 흔들기를 선언한 적이 있다면 중복으로 배율이 또 붙지는 않습니다).<br><br>
 
         <div class="rule-group-title">▶ 보너스 카드</div>
@@ -401,18 +410,12 @@
           </div>
 
           <div class="gostop-bar" id="bombSkipBar" style="display:none;">
-            <div>폭탄으로 얻은 기회입니다 — 이번 차례에 패를 낼까요, 젖히기만 할까요?</div>
-            <button type="button" class="go-btn" onclick="humanBombSkipChoosePlay()">패 내기</button>
+            <div>폭탄으로 얻은 기회입니다 — 손패를 클릭하면 패를 내고, 아니면 젖히기만 할 수 있습니다.</div>
             <button type="button" class="stop-btn" onclick="humanBombSkipChooseSkip()">젖히기</button>
           </div>
 
           <div class="gostop-bar bomb-hint" id="bombBar" style="display:none;">
             <div id="bombMsg"></div>
-          </div>
-
-          <div class="gostop-bar bomb-hint" id="shakeBar" style="display:none;">
-            <div id="shakeMsg"></div>
-            <div id="shakeBtns" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
           </div>
         </div>
 
@@ -1705,7 +1708,7 @@ function aiPickCaptureTarget(matches, playerIdx){
   let best=null, bestVal=-Infinity;
   matches.forEach(m=>{
     const rest = matches.filter(x=>x!==m);
-    const own = scoreProximityValue(G.captured[playerIdx], [m]);
+    const own = scoreProximityValue(G.captured[playerIdx], [m], G.hands[playerIdx]);
     const leaveRisk = opponentRiskIfLeft(playerIdx, rest);
     const val = own*2 - leaveRisk + cardWeight(m, playerIdx)*0.3; // leaveRisk는 위험이므로 더하지 않고 뺀다(부호 수정)
     if(val>bestVal){ bestVal=val; best=m; }
@@ -1882,38 +1885,47 @@ function computeScore(capturedCards){
 }
 
 /* 이 패(들)를 이미 가진 사람의 먹은 패에 더했을 때 점수 문턱에 얼마나 가까워지는지 어림한다.
-   실제 총점이 오르는 경우는 크게, 광/단/고도리/피 문턱을 코앞에서 완성시키는 경우는 별도 가산점을 준다. */
-function scoreProximityValue(capturedPile, addedCards){
+   실제 총점이 오르는 경우는 크게, 광/단/고도리/피 문턱을 코앞에서 완성시키는 경우는 별도 가산점을 준다.
+   handPile을 넘기면(본인 손패를 들여다볼 수 있는 "내 관점" 판단에서만 사용 — 상대방 위협 판단에는
+   손패를 들여다보지 않으므로 넘기지 않는다), 이미 먹은 패뿐 아니라 아직 손에만 들고 있어 확정은
+   아니지만 조만간 내 스스로 낼 가능성이 높은 같은 조합 패도 절반 가중치로 근접도에 반영한다. */
+function scoreProximityValue(capturedPile, addedCards, handPile){
+  handPile = handPile || [];
+  const HAND_W = 0.5;
   const before = computeScore(capturedPile).total;
   const after = computeScore(capturedPile.concat(addedCards)).total;
   let val = (after-before)*3;
   addedCards.forEach(card=>{
     if(card.type==='gwang'){
-      const g = capturedPile.filter(c=>c.type==='gwang').length;
+      const gHand = handPile.filter(c=>c.type==='gwang').length;
+      const g = Math.round(capturedPile.filter(c=>c.type==='gwang').length + gHand*HAND_W);
       if(g===1) val += 1;       // 아직 이르지만 광을 모으기 시작했다는 신호
       else if(g===2) val += 3;  // 3광 완성 직전
       else if(g===3) val += 2;  // 4광 완성 직전
       else if(g===4) val += 5;  // 5광(15점) 완성 직전 — 특히 크게
     }
     if(card.type==='tti' && card.ttiType){
-      const sameColor = capturedPile.filter(c=>c.type==='tti'&&c.ttiType===card.ttiType).length;
       // 이미 나를 포함해 서로 다른 두 사람이 이 색 단을 나눠 가졌다면 그 단은 누구에게도
       // 완성 불가능해진 죽은 조합이므로, 몇 장을 모았든 더는 위험/기회 신호를 주지 않는다.
       if(ttiComboAchievable(card.ttiType)){
+        const sameColorHand = handPile.filter(c=>c.type==='tti'&&c.ttiType===card.ttiType).length;
+        const sameColor = Math.round(capturedPile.filter(c=>c.type==='tti'&&c.ttiType===card.ttiType).length + sameColorHand*HAND_W);
         if(sameColor===2) val += 3; // 홍단/청단/초단(3점) 완성 직전
         else if(sameColor===1) val += 0.6; // 아직 급하진 않아도 그쪽으로 모으고 있다는 신호는 미리 반영
       }
     }
     if(card.type==='yeol' && card.bird){
-      const birds = capturedPile.filter(c=>c.type==='yeol'&&c.bird).length;
       // 고도리도 마찬가지로, 이미 서로 다른 두 사람에게 새가 갈라졌으면 죽은 조합이라 신호를 끈다.
       if(godoriAchievable()){
+        const birdsHand = handPile.filter(c=>c.type==='yeol'&&c.bird).length;
+        const birds = Math.round(capturedPile.filter(c=>c.type==='yeol'&&c.bird).length + birdsHand*HAND_W);
         if(birds===2) val += 4; // 고도리(5점) 완성 직전
         else if(birds===1) val += 1; // 고도리도 한 장째부터 미리 신호를 준다
       }
     }
     if(card.type==='pi'||card.type==='ssangpi'){
-      const piN = capturedPile.filter(c=>c.type==='pi').length + capturedPile.filter(c=>c.type==='ssangpi').length*2;
+      const piNHand = handPile.filter(c=>c.type==='pi').length + handPile.filter(c=>c.type==='ssangpi').length*2;
+      const piN = capturedPile.filter(c=>c.type==='pi').length + capturedPile.filter(c=>c.type==='ssangpi').length*2 + piNHand*HAND_W;
       if(piN>=8) val += 1.6; // 피 10장 문턱 임박
       else if(piN>=5) val += 0.5; // 아직 멀어도 피가 쌓이고 있다는 신호는 미리 반영
     }
@@ -2073,8 +2085,13 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
     // 경합 중인(hiddenCount>0) 패는 상대 위협 점수가 우연히 0으로 나오는 흔한 상황에서도 "지금
     // 안 먹으면 넘어갈 수도 있다"는 실질적 위험이 있으므로, 그 자체만으로 약간의 우선순위를 준다.
     blockRisk += hiddenCount * 0.5;
+    // 위 두 항목은 "얼마나 안 보이는 패가 남았는가"만 볼 뿐, 지금 남기는 바닥 패 자체가
+    // 얼마나 값진지(광 vs 열끗 등)는 전혀 반영하지 않는다. 안 보이는 패가 적어 "안전해 보여도"
+    // 남기는 패 자체가 비싸면(예: 광) 나중에 그 값진 패를 상대가 채가는 손해가 훨씬 크므로,
+    // 남기는 패의 원가치도 위험도에 더해준다.
+    blockRisk += taken.reduce((s,c)=>s+cardWeight(c,playerIdx),0) * 0.2;
 
-    const mineValue = scoreProximityValue(G.captured[playerIdx], captureSet);      // 2순위: 내 먹은 패 기준 점수 근접도
+    const mineValue = scoreProximityValue(G.captured[playerIdx], captureSet, hand.filter(h=>h!==card));      // 2순위: 내 먹은 패 기준 점수 근접도(손에 남는 패도 절반 가중)
     const restHand = hand.filter(c=>c!==card);
     const handSupport = captureSet.reduce((s,c)=>s+restHand.filter(h=>h.type===c.type).length, 0); // 3순위: 손패 지원
     // 뻑(3장 이상)을 완성하는 캡처라면, 그로 인한 따닥 보너스(상대 피)를 지금 상대가 실제로
@@ -2120,12 +2137,21 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
       }
     }
     const baseWeight = floorGain - handCardCost*0.3 - deadCardPenalty - ppeokFormRisk + ttadakEstimate;      // 기본 가중치(+뻑 완성 시 실제 기대 보너스) (0.5→0.3: 시뮬레이션 튜닝, 손패를 덜 아까워하고 더 적극적으로 챙김)
+    // 같은 월 손패가 2장 이상이라 어느 걸 내도 이번 캡처 결과(taken)가 완전히 동일한
+    // 상대(예: 11월 쌍피 vs 피, 9월 유동형 열끗 vs 피)라면, 위 우선순위들이 전부 동점일 때
+    // baseWeight(값진 손패를 아낀다는 일반 규칙) 대신 더 비싼 손패를 내는 쪽을 우선한다 —
+    // 아껴봐야 나중에 더 좋아질 게 없고 라운드가 끝날 때까지 못 내면 그 값어치를 통째로
+    // 날릴 위험만 생기기 때문. 다만 단/고도리 완성이 임박해 mineValue가 이미 갈린 경우는
+    // (예: 초단 완성 직전이라 값싼 쪽 tti를 내야 하는 경우) 그 tier에서 먼저 걸러지므로
+    // 여기까지 내려오지 않는다.
+    const sameMonthRival = matches.length===1 && best && best.month===card.month;
     const better = !bestScore
       || immediateScore>bestScore.immediateScore
       || (immediateScore===bestScore.immediateScore && blockRisk>bestScore.blockRisk)
       || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && mineValue>bestScore.mineValue)
       || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && mineValue===bestScore.mineValue && handSupport>bestScore.handSupport)
-      || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && mineValue===bestScore.mineValue && handSupport===bestScore.handSupport && baseWeight>bestScore.baseWeight);
+      || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && mineValue===bestScore.mineValue && handSupport===bestScore.handSupport && sameMonthRival && cardWeight(card,playerIdx)>cardWeight(best,playerIdx))
+      || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && mineValue===bestScore.mineValue && handSupport===bestScore.handSupport && !sameMonthRival && baseWeight>bestScore.baseWeight);
     if(better){ bestScore={immediateScore,blockRisk,mineValue,handSupport,baseWeight}; best=card; }
   }
   if(best) return best;
@@ -2185,8 +2211,43 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
 
   let bestDiscard=null, bestDiscardScore=null;
   for(const card of pool){
-    const oppRisk = opponentRiskIfLeft(playerIdx, [card]);
-    const mineVal = scoreProximityValue(G.captured[playerIdx], [card]);
+    let oppRisk = opponentRiskIfLeft(playerIdx, [card]);
+    let mineVal = scoreProximityValue(G.captured[playerIdx], [card], hand.filter(h=>h!==card));
+    // 이 월의 아직 안 보이는 패가 나중에 나타나면, 지금 이 손패를 어떻게 하느냐에 따라
+    // 두 가지가 갈린다: 계속 쥐고 있다가 내가 그 패와 짝지어 캡처하거나(내 활용도), 지금
+    // 버려서 바닥에 놓인 채로 있다가 "누군가"가 그 숨은 패로 캡처할 때 함께 딸려가거나
+    // (상대 위험). 그 짝이 하필 값진 패(단 완성, 광 3장·고도리 완성 조각 등)라면 두 경우
+    // 모두 그만큼 크게 반영해야 한다 — 아직 일어나지 않은 가능성이니 실제로 그 패가 나타날
+    // 확률(안 보이는 장수/덱에 남은 장수)만큼만 반영한다.
+    const hiddenTypes = hiddenCardTypesForMonth(card.month, allCaptured, floor, hand);
+    if(hiddenTypes.length){
+      // 어떤 숨은 패가 "가장 위협적인 짝"인지는 그 카드 자체의 원가치(cardWeight)만으로는
+      // 알 수 없다 — 예를 들어 고도리 새 열끗은 원가치는 낮아도(1.2) 상대가 이미 새 2장을
+      // 모아뒀다면 그 3번째 조각으로는 가장 위협적이다. 그래서 후보를 미리 하나로 추리지
+      // 않고, 숨은 패 각각을 실제로 짝지었을 때의 점수 근접도 상승분을 다 계산해 최댓값을 쓴다.
+      const drawProb = G.deck.length>0 ? Math.min(1, hiddenTypes.length/G.deck.length) : 0;
+      const mineBaseline = mineVal;
+      let bestMineGain = 0;
+      hiddenTypes.forEach(t=>{
+        const gain = scoreProximityValue(G.captured[playerIdx], [card, t], hand.filter(h=>h!==card)) - mineBaseline;
+        if(gain>bestMineGain) bestMineGain = gain;
+      });
+      mineVal += bestMineGain * drawProb;
+      // 상대 쪽은 진짜 "점수가 임박한 상황"(문턱을 실제로 넘는 경우)만 위험으로 친다 —
+      // scoreProximityValue의 1장짜리 조기 신호 보너스(예: 새 1장째)까지 반영하면, 그저
+      // 우연히 상대가 관련 패를 한 장 가진 것만으로도 과도하게 위험하다고 오판하게 된다.
+      for(let i=0;i<3;i++){
+        if(i===playerIdx) continue;
+        const oppBefore = computeScore(G.captured[i]).total;
+        let bestOppGain = 0;
+        hiddenTypes.forEach(t=>{
+          const oppAfter = computeScore(G.captured[i].concat([card, t])).total;
+          const gain = (oppAfter - oppBefore) * 3;
+          if(gain>bestOppGain) bestOppGain = gain;
+        });
+        oppRisk += bestOppGain * drawProb;
+      }
+    }
     // 이 카드를 지금 버리면(바닥에 매칭 없이 놓임), 다음 드로우가 우연히 같은 월이라 "쪽"
     // (피 보너스)이 터질 가능성이 있다. 뻑 위험 계산과 같은 방식으로, 안 보이는 장수를 덱에
     // 남은 장수로 나눈 실제 확률에 상대가 줄 수 있는 피 기대값을 곱해 이 카드의 가치를 그만큼
@@ -2669,39 +2730,30 @@ function startRound(){
   for(let i=0;i<7;i++) for(let p=0;p<3;p++) hands[p].push(deck.pop());
   const floor=[];
   for(let i=0;i<6;i++) floor.push(deck.pop());
-  // 보너스 카드가 초기 바닥패에 깔리면 선(딜러)이 그대로 가져가고, 바닥을 6장으로 맞추기 위해 한 장을 더 뒤집는다
-  let initialBonusCard = null;
-  let initialBonusReplacement = null;
-  for(let bi=0; bi<floor.length; bi++){
-    if(floor[bi].isBonus){
-      initialBonusCard = floor.splice(bi,1)[0];
-      if(deck.length>0) initialBonusReplacement = deck.pop();
-      break;
-    }
-  }
   G.deck=deck; G.hands=hands; G.floor=floor;
   G.captured=[[],[],[]]; G.goCount=[0,0,0]; G.lastGoScore=[null,null,null]; G.bombSkip=[0,0,0];
-  if(initialBonusCard) G.captured[G.dealer].push(initialBonusCard);
   G.ppeokMakeCount=[0,0,0]; // 이번 판에서 각자 뻑을 만든 횟수(3회째에 즉시 3점 승리)
   G.shakeCount=[0,0,0]; G.shakenMonths=[[],[],[]]; G.shakenCards=[[],[],[]];
   G.turn=G.dealer; G.log=[]; G.phase='idle'; G.roundOver=false;
   document.getElementById('roundNum').textContent=G.round;
-  if(initialBonusCard) addLog(PLAYER_NAMES[G.dealer]+': 바닥에 처음부터 보너스 카드가 깔려 그대로 가져갑니다.');
-
-  // 총통: 시작 손패에 같은 월 4장을 모두 가진 사람이 있으면 그 즉시 3점으로 승리.
-  // 두 명 이상이 동시에 총통이면(이론상 최대 두 명), 그 중 월이 더 높은 사람이 이긴다.
-  const finalizeInitialSetup=()=>{
+  // 방금 나눠준 손패 7장·바닥 6장을 보너스/총통/4장 특수 처리 전 그대로 먼저 보여준다 —
+  // 컴퓨터가 곧바로 진행해버려 초기 배분을 놓치는 일이 없도록 안내 배너로 잠깐 텀을 준다.
+  render();
+  showDealToast(G.dealer, ()=>{ processInitialChongtong(); });
+}
+/* 총통: 시작 손패에 같은 월 4장을 모두 가진 사람이 있으면 그 즉시 3점으로 승리.
+   두 명 이상이 동시에 총통이면(이론상 최대 두 명), 그 중 월이 더 높은 사람이 이긴다. */
+function processInitialChongtong(){
   const chongtongCands = [];
   for(let p=0;p<3;p++){
     const byMonth={};
-    hands[p].forEach(c=>{ byMonth[c.month]=(byMonth[c.month]||0)+1; });
+    G.hands[p].forEach(c=>{ byMonth[c.month]=(byMonth[c.month]||0)+1; });
     const chongtongMonth = Object.keys(byMonth).find(m=>byMonth[m]===4);
     if(chongtongMonth) chongtongCands.push({p, month:+chongtongMonth});
   }
   if(chongtongCands.length){
     chongtongCands.sort((a,b)=>b.month-a.month);
     const winner = chongtongCands[0];
-    render();
     if(chongtongCands.length>1){
       addLog(chongtongCands.map(c=>PLAYER_NAMES[c.p]+'('+c.month+'월)').join(', ')+' 동시 총통 — 월이 더 높은 '+PLAYER_NAMES[winner.p]+' 승리!');
     } else {
@@ -2711,44 +2763,63 @@ function startRound(){
     finalizeRound(winner.p, score);
     return;
   }
-
-  // 바닥에 같은 월이 처음부터 4장 깔리면 선(딜러)이 그대로 가져간다
+  processInitialFloorBonusCard();
+}
+/* 보너스 카드가 초기 바닥패에 깔리면 선(딜러)이 그대로 가져가고, 바닥을 6장으로 맞추기 위해
+   덱에서 한 장을 더 뒤집는다. 실제 카드가 있던 바닥 자리에서 딜러 패널로 날아가는 것처럼
+   보이도록, 배열을 먼저 바꾸고 다시 그린 뒤 그 변화를 시각적으로 잇는 분신을 띄운다. */
+function processInitialFloorBonusCard(){
+  const initialBonusCard = G.floor.find(c=>c.isBonus);
+  if(!initialBonusCard){ processInitialFloorQuadMonth(); return; }
+  const from = floorOverlapAnchor(initialBonusCard, 0) || floorAnchor();
+  const idx = G.floor.indexOf(initialBonusCard);
+  G.floor.splice(idx,1);
+  G.captured[G.dealer].push(initialBonusCard);
+  addLog(PLAYER_NAMES[G.dealer]+': 바닥에 처음부터 보너스 카드가 깔려 그대로 가져갑니다.');
+  render();
+  flyCardVisual(initialBonusCard, from, capturedPanelAnchor(G.dealer), 480, ()=>{
+    if(!G) return;
+    const replacement = G.deck.length>0 ? G.deck.pop() : null;
+    if(!replacement){ processInitialFloorQuadMonth(); return; }
+    flipDeckCardToFloor(replacement, (replacementFlyer)=>{
+      if(!G) return;
+      G.floor.push(replacement);
+      render();
+      if(replacementFlyer) replacementFlyer.remove();
+      processInitialFloorBonusCard(); // 방금 뒤집은 카드도 보너스일 수 있으니 다시 확인
+    });
+  });
+}
+/* 바닥에 같은 월이 처음부터 4장 깔리면 선(딜러)이 그대로 가져간다(6장 중 4장이므로 한 월만 가능). */
+function processInitialFloorQuadMonth(){
+  let quadMonth = null;
   for(let m=1;m<=12;m++){
-    const matches=floor.filter(c=>c.month===m);
-    if(matches.length===4){
-      matches.forEach(c=>{ const idx=floor.indexOf(c); if(idx!==-1) floor.splice(idx,1); });
-      G.captured[G.dealer]=G.captured[G.dealer].concat(matches);
-      addLog(PLAYER_NAMES[G.dealer]+': 바닥에 처음부터 '+m+'월 4장이 깔려 그대로 가져갑니다.');
-    }
+    if(G.floor.filter(c=>c.month===m).length===4){ quadMonth = m; break; }
   }
-  // 바닥에 같은 월이 처음부터 3장 깔리면 뻑과 동일하게 묶어둔다
+  if(quadMonth===null){ processInitialFloorTripleMonth(); return; }
+  const matches = G.floor.filter(c=>c.month===quadMonth);
+  const from = floorOverlapAnchor(matches[0], 0) || floorAnchor();
+  matches.forEach(c=>{ const i=G.floor.indexOf(c); if(i!==-1) G.floor.splice(i,1); });
+  G.captured[G.dealer] = G.captured[G.dealer].concat(matches);
+  addLog(PLAYER_NAMES[G.dealer]+': 바닥에 처음부터 '+quadMonth+'월 4장이 깔려 그대로 가져갑니다.');
+  render();
+  animateCaptureSweepFrom(G.dealer, matches[matches.length-1], from, ()=>{
+    render();
+    processInitialFloorTripleMonth();
+  });
+}
+/* 바닥에 같은 월이 처음부터 3장 깔리면 뻑과 동일하게 묶어둔다(이동 없이 표시만 바뀜). */
+function processInitialFloorTripleMonth(){
   for(let m=1;m<=12;m++){
-    const matches=floor.filter(c=>c.month===m);
+    const matches=G.floor.filter(c=>c.month===m);
     if(matches.length===3){
       matches.forEach(c=>{ c.ppeokOwner=-1; });
       addLog(m+'월 패가 바닥에 처음부터 3장 깔려 뻑으로 묶였습니다.');
     }
   }
-
-    addLog(PLAYER_NAMES[G.turn]+'(이)가 선으로 시작합니다.');
-    render();
-    proceedTurn();
-  };
-  if(initialBonusCard){
-    render();
-    flyCardVisual(initialBonusCard, floorAnchor(), capturedPanelAnchor(G.dealer), 520, ()=>{
-      if(initialBonusReplacement){
-        flipDeckCardToFloor(initialBonusReplacement, (replacementFlyer)=>{
-          G.floor.push(initialBonusReplacement);
-          render();
-          if(replacementFlyer) replacementFlyer.remove();
-          finalizeInitialSetup();
-        });
-      } else finalizeInitialSetup();
-    });
-  } else {
-    finalizeInitialSetup();
-  }
+  addLog(PLAYER_NAMES[G.turn]+'(이)가 선으로 시작합니다.');
+  render();
+  proceedTurn();
 }
 function addLog(msg){
   G.log.push(msg);
@@ -2835,6 +2906,28 @@ function showPiBonusToast(playerIdx, eventName, gainers, onDone){
     if(toast) toast.classList.remove('show');
   }, 1800, onDone);
 }
+/* 판이 시작되어 카드를 막 나눠준 직후 짧게 띄우는 안내 배너. onDone은 배너가 사라진
+   뒤 호출된다 — 호출부는 이 안에서 보너스 카드/4장 쏠림 등 초기 배분 후처리를 이어가야
+   컴퓨터가 곧바로 진행해버려도 초기 배분을 볼 시간이 확보된다. */
+function showDealToast(dealerIdx, onDone){
+  queueToast(()=>{
+    let toast = document.getElementById('dealToast');
+    if(!toast){
+      toast = document.createElement('div');
+      toast.id = 'dealToast';
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML =
+      '<div class="deal-toast-main">카드 분배 완료</div>'+
+      '<div class="deal-toast-sub">'+PLAYER_NAMES[dealerIdx]+'(이)가 선으로 시작합니다</div>';
+    toast.classList.remove('show');
+    void toast.offsetWidth;
+    toast.classList.add('show');
+  }, ()=>{
+    const toast = document.getElementById('dealToast');
+    if(toast) toast.classList.remove('show');
+  }, 1800, onDone);
+}
 function logPlayResult(playerIdx, card, res){
   const who=PLAYER_NAMES[playerIdx];
   const label=labelOf(card);
@@ -2848,14 +2941,15 @@ function logPlayResult(playerIdx, card, res){
    완성이 아니면 즉시 onDone. 호출부는 캡처 스윕 애니메이션이 끝난 뒤 이 함수를 불러야 한다. */
 function resolvePpeokBonus(playerIdx, ppeokPending, onDone){
   if(!ppeokPending){ onDone(); return; }
-  ttadakBonus(playerIdx, (gains)=>{
-    if(gains.length>0){
-      addLog('&nbsp;&nbsp;↳ 뻑 완성: '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
-      showPiBonusToast(playerIdx, '뻑 완성', gains, onDone);
-    } else {
-      onDone();
-    }
-  });
+  const gains = ttadakGains(playerIdx);
+  if(gains.length>0){
+    addLog('&nbsp;&nbsp;↳ 뻑 완성: '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
+    showPiBonusToast(playerIdx, '뻑 완성', gains, ()=>{
+      runTtadakTransfers(playerIdx, gains, onDone);
+    });
+  } else {
+    onDone();
+  }
 }
 
 function checkHandsEmpty(){
@@ -2931,11 +3025,6 @@ function autoShakeOnPlay(playerIdx, hand, card){
     declareShake(playerIdx, card.month);
   }
 }
-function humanDeclareShake(month){
-  if(!G || G.phase!=='humanPlay' || G.roundOver) return;
-  declareShake(HUMAN, month);
-  render();
-}
 function executeBomb(playerIdx, bomb){
   const hand=G.hands[playerIdx];
   // 폭탄은 흔들기와 같은 것으로 취급한다. 이 월로 이미 흔들기를 선언했었다면 중복으로 세지 않는다.
@@ -2961,15 +3050,16 @@ function executeBomb(playerIdx, bomb){
         animateCaptureSweepFrom(playerIdx, capturedCards[capturedCards.length-1], floorAnchor(), ()=>{
           render();
           safeTimeout(()=>{
-            ttadakBonus(playerIdx, (gains)=>{
-              const proceedDraw = ()=>doDraw(playerIdx, null, {deferred:false, captured:true, cards:capturedCards});
-              if(gains.length){
-                addLog(PLAYER_NAMES[playerIdx]+': <b>폭탄 보상!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
-                showPiBonusToast(playerIdx, '폭탄', gains, proceedDraw);
-                return;
-              }
-              proceedDraw();
-            });
+            const proceedDraw = ()=>doDraw(playerIdx, null, {deferred:false, captured:true, cards:capturedCards});
+            const gains = ttadakGains(playerIdx);
+            if(gains.length){
+              addLog(PLAYER_NAMES[playerIdx]+': <b>폭탄 보상!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
+              showPiBonusToast(playerIdx, '폭탄', gains, ()=>{
+                runTtadakTransfers(playerIdx, gains, proceedDraw);
+              });
+              return;
+            }
+            proceedDraw();
           }, 300);
         });
       }, 300);
@@ -3096,7 +3186,7 @@ function floorAnchor(){
     }
   }
   const area = rectAnchor(container);
-  return area ? {x:area.x, y:area.y, w:40, h:61.3} : {x:innerWidth/2,y:innerHeight/2,w:40,h:61.3};
+  return area ? {x:area.x, y:area.y, w:40, h:62} : {x:innerWidth/2,y:innerHeight/2,w:40,h:62};
 }
 function floorRevealAnchor(){
   const container = document.getElementById('floorCards');
@@ -3105,7 +3195,7 @@ function floorRevealAnchor(){
   const cards = container && container.querySelectorAll ? Array.from(container.querySelectorAll('.card')) : [];
   const sample = cards.length ? rectAnchor(cards[0]) : null;
   if(!area) return floorAnchor();
-  const w = sample && sample.w || 40, h = sample && sample.h || 61.3;
+  const w = sample && sample.w || 40, h = sample && sample.h || 62;
   const lowest = cards.reduce((max, el)=>{
     const r = rectAnchor(el);
     return r ? Math.max(max, r.y + r.h) : max;
@@ -3143,7 +3233,7 @@ function capturedPanelAnchor(playerIdx){
   const cardRect = rectAnchor(card);
   if(cardRect) return cardRect;
   const area = el && typeof el.getBoundingClientRect==='function' ? rectAnchor(el) : null;
-  return area ? {x:area.x, y:area.y, w:40, h:61.3} : panelAnchor(playerIdx);
+  return area ? {x:area.x, y:area.y, w:40, h:62} : panelAnchor(playerIdx);
 }
 /* 피 보상을 "받는" 쪽 착지 지점 — 그 사람 패널 안에서 피가 모여 있는 자리(피 카드들 중 마지막
    카드 옆) 로 정확히 잡는다. 아직 피가 한 장도 없으면(그 칸 자체가 아직 안 그려져 있으므로)
@@ -3173,7 +3263,7 @@ function currentZoomFactor(){
 function animatedCardSize(from, to){
   // AI 이동의 출발점은 상대 패널 전체라서, 카드 크기인 반대쪽 앵커를 사용한다.
   const source = from && to && from.w > to.w*2 ? to : from;
-  return {w:source && source.w || 40, h:source && source.h || 61.3};
+  return {w:source && source.w || 40, h:source && source.h || 62};
 }
 function flyCardVisual(card, from, to, duration, onDone, showBack, keepOnDone){
   if(!from || !to){ if(onDone) onDone(); return; }
@@ -3316,7 +3406,9 @@ function aiPlayTurn(playerIdx, excludeMonths, fallbackBomb){
   }, false, hasFloorMatch);
 }
 function humanPlayCard(cardId){
-  if(!G || G.phase!=='humanPlay' || G.roundOver) return;
+  if(!G || G.roundOver) return;
+  if(G.phase==='bombSkipChoice') humanBombSkipChoosePlay();
+  if(G.phase!=='humanPlay') return;
   const bombCand = (G.bombCandidates||[]).find(b=>b.cards.some(c=>c.id===cardId));
   if(bombCand){
     G.bombCandidates=[];
@@ -3352,15 +3444,23 @@ function playSingleCard(cardId){
 }
 /* 다른 두 명에게서 피를 1장씩 받는다. 각자에게서 실제로 받아오는 애니메이션이 모두 끝난 뒤
    onDone(gains)를 호출한다 — gains는 실제로 줄 피가 있어서 받아온 상대의 인덱스 목록. */
-function ttadakBonus(playerIdx, onDone){
-  const givers=[0,1,2].filter(i=>i!==playerIdx);
-  const gains=new Array(givers.length);
-  let pending=givers.length;
-  if(pending===0){ onDone([]); return; }
-  givers.forEach((i,pos)=>{
-    transferPiAnimated(i, playerIdx, (ok)=>{
-      gains[pos]=ok?i:undefined;
-      if(--pending===0) onDone(gains.filter(v=>v!==undefined));
+/* 상대들 중 실제로 피(또는 쌍피)를 줄 수 있는 사람의 인덱스를, 애니메이션 없이 미리 계산한다.
+   알림 배너에 표시될 대상을 애니메이션 전에 확정해서, 알림이 먼저 뜨고 그 뒤에 실제 이동
+   애니메이션이 재생되도록 순서를 나눌 수 있게 한다. */
+function ttadakGains(playerIdx){
+  return [0,1,2].filter(i=>{
+    if(i===playerIdx) return false;
+    const arr=G.captured[i];
+    return arr.some(c=>c.type==='pi') || arr.some(c=>c.type==='ssangpi');
+  });
+}
+/* ttadakGains로 이미 확정된 대상들에 대해서만 실제 피 이동 애니메이션을 재생한다. */
+function runTtadakTransfers(playerIdx, gains, onDone){
+  if(gains.length===0){ onDone(); return; }
+  let pending=gains.length;
+  gains.forEach(i=>{
+    transferPiAnimated(i, playerIdx, ()=>{
+      if(--pending===0) onDone();
     });
   });
 }
@@ -3378,7 +3478,7 @@ function flipCardInPlace(card, anchor, onDone, keepOnDone, existingFlyer){
   const flyer = existingFlyer || document.createElement('div');
   if(!existingFlyer){
     flyer.className = 'card flyer-card back';
-    const size = anchor && anchor.w <= anchor.h ? anchor : {w:40, h:61.3};
+    const size = anchor && anchor.w <= anchor.h ? anchor : {w:40, h:62};
     const w = size.w/zf, h = size.h/zf;
     flyer.style.width=w+'px'; flyer.style.height=h+'px';
     flyer.style.left=(anchor.x/zf)+'px'; flyer.style.top=(anchor.y/zf)+'px';
@@ -3600,25 +3700,27 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
       if(handRes.ppeokPending || res.ppeokPending){
         resolvePpeokBonus(playerIdx, true, finish);
       } else if(isTtadak){
-        ttadakBonus(playerIdx, (gains)=>{
-          if(gains.length>0){
-            addLog(PLAYER_NAMES[playerIdx]+': <b>따닥!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
-            showPiBonusToast(playerIdx, '따닥', gains, finish);
-          } else {
-            addLog(PLAYER_NAMES[playerIdx]+': <b>따닥!</b> (상대에게 줄 피가 없어 보너스 없음)');
-            finish();
-          }
-        });
+        const gains = ttadakGains(playerIdx);
+        if(gains.length>0){
+          addLog(PLAYER_NAMES[playerIdx]+': <b>따닥!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
+          showPiBonusToast(playerIdx, '따닥', gains, ()=>{
+            runTtadakTransfers(playerIdx, gains, finish);
+          });
+        } else {
+          addLog(PLAYER_NAMES[playerIdx]+': <b>따닥!</b> (상대에게 줄 피가 없어 보너스 없음)');
+          finish();
+        }
       } else if(isJjok){
-        ttadakBonus(playerIdx, (gains)=>{
-          if(gains.length>0){
-            addLog(PLAYER_NAMES[playerIdx]+': <b>쪽!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
-            showPiBonusToast(playerIdx, '쪽', gains, finish);
-          } else {
-            addLog(PLAYER_NAMES[playerIdx]+': <b>쪽!</b> (상대에게 줄 피가 없어 보너스 없음)');
-            finish();
-          }
-        });
+        const gains = ttadakGains(playerIdx);
+        if(gains.length>0){
+          addLog(PLAYER_NAMES[playerIdx]+': <b>쪽!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
+          showPiBonusToast(playerIdx, '쪽', gains, ()=>{
+            runTtadakTransfers(playerIdx, gains, finish);
+          });
+        } else {
+          addLog(PLAYER_NAMES[playerIdx]+': <b>쪽!</b> (상대에게 줄 피가 없어 보너스 없음)');
+          finish();
+        }
       } else {
         finish();
       }
@@ -3698,15 +3800,16 @@ function afterTurn(playerIdx, capturedThisTurn){
   // 싹쓸이: 먹고 나서 바닥에 한 장도 안 남으면 보너스. 단, 손에 남은 마지막 패로 낸 경우는 제외.
   // 실제로 피가 날아가는 애니메이션이 끝난 뒤에야(피를 받아 점수에 반영된 뒤) 다음 단계로 넘어간다.
   if(capturedThisTurn && G.floor.length===0 && hasMoreTurns(playerIdx)){
-    ttadakBonus(playerIdx, (gains)=>{
-      const proceedDecide = ()=>afterTurnDecide(playerIdx, capturedThisTurn);
-      if(gains.length>0){
-        addLog(PLAYER_NAMES[playerIdx]+': <b>싹쓸이!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
-        showPiBonusToast(playerIdx, '싹쓸이', gains, proceedDecide);
-      } else {
-        proceedDecide();
-      }
-    });
+    const proceedDecide = ()=>afterTurnDecide(playerIdx, capturedThisTurn);
+    const gains = ttadakGains(playerIdx);
+    if(gains.length>0){
+      addLog(PLAYER_NAMES[playerIdx]+': <b>싹쓸이!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
+      showPiBonusToast(playerIdx, '싹쓸이', gains, ()=>{
+        runTtadakTransfers(playerIdx, gains, proceedDecide);
+      });
+    } else {
+      proceedDecide();
+    }
     return;
   }
   afterTurnDecide(playerIdx, capturedThisTurn);
@@ -4012,7 +4115,7 @@ function render(){
 
   const handEl=document.getElementById('handRow');
   handEl.innerHTML='';
-  const clickable = (G.phase==='humanPlay') && !G.roundOver;
+  const clickable = (G.phase==='humanPlay' || G.phase==='bombSkipChoice') && !G.roundOver;
   const bombCardIds = (G.phase==='humanPlay' && G.bombCandidates && G.bombCandidates.length)
     ? new Set(G.bombCandidates.flatMap(b=>b.cards.map(c=>c.id)))
     : null;
@@ -4056,17 +4159,6 @@ function render(){
     bombBar.style.display='none';
   }
 
-  const shakeBar=document.getElementById('shakeBar');
-  const shakeCands = (G.phase==='humanPlay' && !G.roundOver) ? checkShakeCandidates(HUMAN) : [];
-  if(shakeCands.length){
-    shakeBar.style.display='flex';
-    document.getElementById('shakeMsg').textContent = shakeCands.map(m=>m+'월').join(', ')+' 3장 — 흔들기 가능! (승리 시 점수 2배)';
-    document.getElementById('shakeBtns').innerHTML = shakeCands.map(m=>
-      '<button type="button" class="go-btn" onclick="humanDeclareShake('+m+')">흔들기</button>'
-    ).join('');
-  } else {
-    shakeBar.style.display='none';
-  }
   armAutoPlayTimer();
 }
 const TYPE_ORDER = {gwang:0, yeol:1, tti:2, pi:3, ssangpi:3};
