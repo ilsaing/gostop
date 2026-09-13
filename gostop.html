@@ -1661,19 +1661,24 @@ function shuffle(arr){
 }
 /* 홍단/청단/초단 중 이 색이 아직 "누군가" 완성할 수 있는 상태인지 확인한다.
    이미 서로 다른 두 명이 이 색 띠를 하나씩 나눠 가졌다면, 남은 한 장을 누가 가져가든
-   같은 색 3장을 한 사람이 모을 방법이 없으므로 그 색은 더 이상 의미가 없어진다. */
-function ttiComboAchievable(ttiType){
+   같은 색 3장을 한 사람이 모을 방법이 없으므로 그 색은 더 이상 의미가 없어진다.
+   playerIdx를 주면 "그 사람 본인" 기준으로 더 엄격하게 본다 — 이미 다른 누군가(단 한
+   명이라도) 이 색 띠를 캡처했다면, 그 카드는 나에게 영영 돌아오지 않으므로 내가 직접
+   완성할 가능성은 이미 사라진 것이다(그 상대 본인에게는 여전히 achievable일 수 있다). */
+function ttiComboAchievable(ttiType, playerIdx){
   if(!ttiType || ttiType==='rain') return false;
   if(typeof G==='undefined' || !G || !G.captured) return true; // 게임 상태 밖(테스트 등)이면 기본적으로 가능하다고 본다
   const owners = new Set();
   for(let i=0;i<3;i++){ if(G.captured[i].some(c=>c.type==='tti' && c.ttiType===ttiType)) owners.add(i); }
+  if(playerIdx!==undefined) return [...owners].every(o=>o===playerIdx);
   return owners.size<=1;
 }
 /* 고도리(2·4·8월 새 열끗) 3장을 누군가 모을 수 있는 상태인지 — 위와 같은 논리. */
-function godoriAchievable(){
+function godoriAchievable(playerIdx){
   if(typeof G==='undefined' || !G || !G.captured) return true;
   const owners = new Set();
   for(let i=0;i<3;i++){ if(G.captured[i].some(c=>c.type==='yeol' && c.bird)) owners.add(i); }
+  if(playerIdx!==undefined) return [...owners].every(o=>o===playerIdx);
   return owners.size<=1;
 }
 function cardWeight(card, playerIdx){
@@ -1681,19 +1686,19 @@ function cardWeight(card, playerIdx){
   if(card.type==='tti'){
     // 비띠, 혹은 이미 다른 두 사람에게 갈려서 단 완성이 불가능해진 색이면 단 조합으로는 가치가 없다.
     // 다만 그래도 "5장 이상=1점"이라는 평문 점수는 남아있으므로, 내가 이미 모은 양+손에 든 잠재력을 봐서 보정한다.
-    const usableForDan = card.ttiType && ttiComboAchievable(card.ttiType);
+    const usableForDan = card.ttiType && ttiComboAchievable(card.ttiType, playerIdx);
     return usableForDan ? 2 : 1.2 + flatThresholdBonus('tti', playerIdx);
   }
   if(card.type==='yeol'){
     if(card.flexible){
       // 이 카드는 나중에 열끗 또는 쌍피 중 유리한 쪽으로 확정되므로(예: 9월), 그 잠재력의
       // 하한을 쌍피 가치로 잡는다 — 실제로 거의 항상 쌍피 쪽이 같거나 더 유리하다.
-      const usableForGodori = card.bird && godoriAchievable();
+      const usableForGodori = card.bird && godoriAchievable(playerIdx);
       const asYeol = usableForGodori ? 1.2 : 1.25 + flatThresholdBonus('yeol', playerIdx);
       return Math.max(5, asYeol);
     }
     // 고도리(새) 열끗이라도 이미 완성이 불가능해졌다면 단순 열끗과 같되, 마찬가지로 평문 점수 잠재력을 보정한다.
-    const usableForGodori = card.bird && godoriAchievable();
+    const usableForGodori = card.bird && godoriAchievable(playerIdx);
     return usableForGodori ? 1.2 : 1.25 + flatThresholdBonus('yeol', playerIdx);
   }
   return {ssangpi:5, pi:3}[card.type];
@@ -1722,7 +1727,7 @@ function aiPickCaptureTarget(matches, playerIdx){
   let best=null, bestVal=-Infinity;
   matches.forEach(m=>{
     const rest = matches.filter(x=>x!==m);
-    const own = scoreProximityValue(G.captured[playerIdx], [m], G.hands[playerIdx]);
+    const own = scoreProximityValue(G.captured[playerIdx], [m], G.hands[playerIdx], playerIdx);
     const leaveRisk = opponentRiskIfLeft(playerIdx, rest);
     const val = own*2 - leaveRisk + cardWeight(m, playerIdx)*0.3; // leaveRisk는 위험이므로 더하지 않고 뺀다(부호 수정)
     if(val>bestVal){ bestVal=val; best=m; }
@@ -1938,7 +1943,7 @@ function scoringCardIds(capturedCards){
    handPile을 넘기면(본인 손패를 들여다볼 수 있는 "내 관점" 판단에서만 사용 — 상대방 위협 판단에는
    손패를 들여다보지 않으므로 넘기지 않는다), 이미 먹은 패뿐 아니라 아직 손에만 들고 있어 확정은
    아니지만 조만간 내 스스로 낼 가능성이 높은 같은 조합 패도 절반 가중치로 근접도에 반영한다. */
-function scoreProximityValue(capturedPile, addedCards, handPile){
+function scoreProximityValue(capturedPile, addedCards, handPile, playerIdx){
   handPile = handPile || [];
   const HAND_W = 0.5;
   const before = computeScore(capturedPile).total;
@@ -1956,7 +1961,7 @@ function scoreProximityValue(capturedPile, addedCards, handPile){
     if(card.type==='tti' && card.ttiType){
       // 이미 나를 포함해 서로 다른 두 사람이 이 색 단을 나눠 가졌다면 그 단은 누구에게도
       // 완성 불가능해진 죽은 조합이므로, 몇 장을 모았든 더는 위험/기회 신호를 주지 않는다.
-      if(ttiComboAchievable(card.ttiType)){
+      if(ttiComboAchievable(card.ttiType, playerIdx)){
         const sameColorHand = handPile.filter(c=>c.type==='tti'&&c.ttiType===card.ttiType).length;
         const sameColor = Math.round(capturedPile.filter(c=>c.type==='tti'&&c.ttiType===card.ttiType).length + sameColorHand*HAND_W);
         if(sameColor===2) val += 3; // 홍단/청단/초단(3점) 완성 직전
@@ -1965,7 +1970,7 @@ function scoreProximityValue(capturedPile, addedCards, handPile){
     }
     if(card.type==='yeol' && card.bird){
       // 고도리도 마찬가지로, 이미 서로 다른 두 사람에게 새가 갈라졌으면 죽은 조합이라 신호를 끈다.
-      if(godoriAchievable()){
+      if(godoriAchievable(playerIdx)){
         const birdsHand = handPile.filter(c=>c.type==='yeol'&&c.bird).length;
         const birds = Math.round(capturedPile.filter(c=>c.type==='yeol'&&c.bird).length + birdsHand*HAND_W);
         if(birds===2) val += 4; // 고도리(5점) 완성 직전
@@ -1988,7 +1993,7 @@ function opponentRiskIfLeft(playerIdx, cards){
   const anyOtherGoCaller = [0,1,2].some(g=>g!==playerIdx && G.goCount[g]>0);
   for(let i=0;i<3;i++){
     if(i===playerIdx) continue;
-    let risk = scoreProximityValue(G.captured[i], cards);
+    let risk = scoreProximityValue(G.captured[i], cards, null, i);
     // "이 카드들을 지금 상대 i가 가져가서 당장 3점 이상을 채운다면" 그 결과 누군가 파산하고,
     // 그게 나에게 유리한지/불리한지 시뮬레이션한다. aiDecideGoStop의 anyBankrupt 판단(내가
     // 스톱할지)과 완전히 같은 원리를, "상대에게 패를 넘길지"에도 그대로 확장한 것이다.
@@ -2140,7 +2145,7 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
     // 남기는 패의 원가치도 위험도에 더해준다.
     blockRisk += taken.reduce((s,c)=>s+cardWeight(c,playerIdx),0) * 0.2;
 
-    const mineValue = scoreProximityValue(G.captured[playerIdx], captureSet, hand.filter(h=>h!==card));      // 2순위: 내 먹은 패 기준 점수 근접도(손에 남는 패도 절반 가중)
+    const mineValue = scoreProximityValue(G.captured[playerIdx], captureSet, hand.filter(h=>h!==card), playerIdx);      // 2순위: 내 먹은 패 기준 점수 근접도(손에 남는 패도 절반 가중)
     const restHand = hand.filter(c=>c!==card);
     const handSupport = captureSet.reduce((s,c)=>s+restHand.filter(h=>h.type===c.type).length, 0); // 3순위: 손패 지원
     // 뻑(3장 이상)을 완성하는 캡처라면, 그로 인한 따닥 보너스(상대 피)를 지금 상대가 실제로
@@ -2261,7 +2266,7 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
   let bestDiscard=null, bestDiscardScore=null;
   for(const card of pool){
     let oppRisk = opponentRiskIfLeft(playerIdx, [card]);
-    let mineVal = scoreProximityValue(G.captured[playerIdx], [card], hand.filter(h=>h!==card));
+    let mineVal = scoreProximityValue(G.captured[playerIdx], [card], hand.filter(h=>h!==card), playerIdx);
     // 이 월의 아직 안 보이는 패가 나중에 나타나면, 지금 이 손패를 어떻게 하느냐에 따라
     // 두 가지가 갈린다: 계속 쥐고 있다가 내가 그 패와 짝지어 캡처하거나(내 활용도), 지금
     // 버려서 바닥에 놓인 채로 있다가 "누군가"가 그 숨은 패로 캡처할 때 함께 딸려가거나
@@ -2269,32 +2274,52 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
     // 모두 그만큼 크게 반영해야 한다 — 아직 일어나지 않은 가능성이니 실제로 그 패가 나타날
     // 확률(안 보이는 장수/덱에 남은 장수)만큼만 반영한다.
     const hiddenTypes = hiddenCardTypesForMonth(card.month, allCaptured, floor, hand);
+    // 이 카드가 어떤 색 단(茶) 방어와 관련 있는지 파악한다: 자신이 직접 그 색 띠이거나,
+    // 안 보이는 카드가 정확히 1장(=나머지 3장이 이미 다 설명됨)이고 그게 하필 띠라면
+    // "확정된 짝"이므로 그 숨은 띠 자체를 쥔 것과 동일한 방어 카드로 취급한다.
+    const guardedTtiType = (card.type==='tti' && card.ttiType) ? card.ttiType
+      : (hiddenTypes.length===1 && hiddenTypes[0].type==='tti' ? hiddenTypes[0].ttiType : null);
+    if(guardedTtiType){
+      // 같은 색을 막아줄 다른 손패(직접 띠 또는 마찬가지로 확정된 대리 방어패)가 이미
+      // 하나 더 있다면, 그 색은 어차피 그 카드 하나만으로 상대에게 막혀 있으므로 이
+      // 카드까지 같이 지킬 필요는 없다 — 위험을 기본값(0에 가까움)으로 둔다.
+      const guardedElsewhere = hand.some(h=>{
+        if(h===card) return false;
+        if(h.type==='tti' && h.ttiType===guardedTtiType) return true;
+        const hHidden = hiddenCardTypesForMonth(h.month, allCaptured, floor, hand);
+        return hHidden.length===1 && hHidden[0].type==='tti' && hHidden[0].ttiType===guardedTtiType;
+      });
+      if(guardedElsewhere){
+        oppRisk = 0;
+      } else if(card.type!=='tti'){
+        // 나 말고는 이 색을 막을 손패가 없는데, 이 카드가 유일한 방어 수단(확정된 짝)이라면
+        // 숨은 띠 자체를 버리는 것과 동일한 위험으로 평가한다.
+        const proxyRisk = opponentRiskIfLeft(playerIdx, [hiddenTypes[0]]);
+        if(proxyRisk>oppRisk) oppRisk = proxyRisk;
+      }
+    }
     if(hiddenTypes.length){
-      // 어떤 숨은 패가 "가장 위협적인 짝"인지는 그 카드 자체의 원가치(cardWeight)만으로는
-      // 알 수 없다 — 예를 들어 고도리 새 열끗은 원가치는 낮아도(1.2) 상대가 이미 새 2장을
-      // 모아뒀다면 그 3번째 조각으로는 가장 위협적이다. 그래서 후보를 미리 하나로 추리지
-      // 않고, 숨은 패 각각을 실제로 짝지었을 때의 점수 근접도 상승분을 다 계산해 최댓값을 쓴다.
+      // 숨은 패가 정확히 1장이면(=이 월의 나머지 3장이 이미 다 설명됨) 그 짝은 "확정"된
+      // 것이므로 두 카드의 가치를 온전히 합쳐 반영한다. 2장 이상이면 어느 쪽이 실제로
+      // 나타날지 알 수 없으므로 최댓값(최선의 경우만 가정)이 아니라 후보들의 평균으로
+      // 기대값을 잡는다.
       const drawProb = G.deck.length>0 ? Math.min(1, hiddenTypes.length/G.deck.length) : 0;
       const mineBaseline = mineVal;
-      let bestMineGain = 0;
-      hiddenTypes.forEach(t=>{
-        const gain = scoreProximityValue(G.captured[playerIdx], [card, t], hand.filter(h=>h!==card)) - mineBaseline;
-        if(gain>bestMineGain) bestMineGain = gain;
-      });
-      mineVal += bestMineGain * drawProb;
+      const mineGains = hiddenTypes.map(t=>scoreProximityValue(G.captured[playerIdx], [card, t], hand.filter(h=>h!==card), playerIdx) - mineBaseline);
+      const avgMineGain = mineGains.reduce((a,b)=>a+b,0) / mineGains.length;
+      mineVal += avgMineGain * drawProb;
       // 상대 쪽은 진짜 "점수가 임박한 상황"(문턱을 실제로 넘는 경우)만 위험으로 친다 —
       // scoreProximityValue의 1장짜리 조기 신호 보너스(예: 새 1장째)까지 반영하면, 그저
       // 우연히 상대가 관련 패를 한 장 가진 것만으로도 과도하게 위험하다고 오판하게 된다.
       for(let i=0;i<3;i++){
         if(i===playerIdx) continue;
         const oppBefore = computeScore(G.captured[i]).total;
-        let bestOppGain = 0;
-        hiddenTypes.forEach(t=>{
+        const oppGains = hiddenTypes.map(t=>{
           const oppAfter = computeScore(G.captured[i].concat([card, t])).total;
-          const gain = (oppAfter - oppBefore) * 3;
-          if(gain>bestOppGain) bestOppGain = gain;
+          return (oppAfter - oppBefore) * 3;
         });
-        oppRisk += bestOppGain * drawProb;
+        const avgOppGain = oppGains.reduce((a,b)=>a+b,0) / oppGains.length;
+        oppRisk += avgOppGain * drawProb;
       }
     }
     // 이 카드를 지금 버리면(바닥에 매칭 없이 놓임), 다음 드로우가 우연히 같은 월이라 "쪽"
@@ -2372,7 +2397,7 @@ function assessGoStopFactors(playerIdx){
     // 즉시 문턱을 넘는 카드(예: 고도리 2장을 먹었는데 3번째 새 열끗이 바닥에 있음)가
     // 있는지 본다. 사소한 피 근접 정도는 잡음이 되므로 확실히 큰 위험(문턱 이상)만 반영한다.
     let imminentJump = 0;
-    G.floor.forEach(f=>{ if(f.isBonus) return; const jump = scoreProximityValue(G.captured[i], [f]); if(jump>imminentJump) imminentJump = jump; });
+    G.floor.forEach(f=>{ if(f.isBonus) return; const jump = scoreProximityValue(G.captured[i], [f], null, i); if(jump>imminentJump) imminentJump = jump; });
     if(imminentJump >= 3) threat += imminentJump;
     if(threat>oppThreat) oppThreat = threat;
   }
@@ -2480,7 +2505,7 @@ function aiDecideGoStop(score, deckRemaining, playerIdx){
   if(score.total>=15) return 'stop'; // 13→15: 시뮬레이션 튜닝 — 무조건 스톱하는 점수 기준을 조금 늦춤
   const {oppRisk, myPotential, upside} = assessGoStopFactors(playerIdx);
   const deckPenalty = (1-deckRemaining/21)*0.15; // 덱이 거의 바닥나면 나가리 위험까지 감안해 스톱 쪽으로 기움 (0.366→0.15: 시뮬레이션 튜닝, 막판이라고 무조건 스톱 쪽으로 과하게 기울지 않도록)
-  let goChance = 0.15 - oppRisk*1.1 + myPotential*0.45 + upside*0.4 - deckPenalty; // 시뮬레이션 튜닝(라운드 8만 회, z=3.8): 상대 위협은 더 크게, 내 잠재력·업사이드는 더 적극적으로 반영
+  let goChance = 0.23 - oppRisk*1.1 + myPotential*0.45 + upside*0.4 - deckPenalty; // 0.15→0.23: 헤드리스 시뮬레이션 튜닝(비대칭 자기대국+공통시드 페어링, 라운드 EV N=12000·매치 승률 N=3000 양쪽 검증, z=3~4) — 상대 위협은 더 크게, 내 잠재력·업사이드는 더 적극적으로 반영
   // 게임의 최종 목표는 이번 판을 이기는 게 아니라 파산하지 않고 최종적으로 더 부유하게 남는 것이다.
   // 지금 가진 돈이 상대적으로 적으면(뒤처져 있으면) 더 공격적으로, 많으면(앞서 있으면) 더 보수적으로.
   const myCoins = G.coins[playerIdx];
