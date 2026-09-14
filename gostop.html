@@ -156,6 +156,9 @@
   .card.shake-target{box-shadow:0 0 0 3px #ff9d5c, 0 0 10px 2px rgba(255,157,92,.7); animation:choosePulse 1s ease-in-out infinite;}
   /* 고/스톱 선택창·라운드 종료 화면에서, 지금 점수에 실제로 반영된 캡처 패를 강조 표시 */
   .card.score-highlight{box-shadow:0 0 0 3px #4ade80, 0 0 10px 2px rgba(74,222,128,.7); animation:scoreHighlightPulse 1.1s ease-in-out infinite; z-index:1;}
+  /* 보너스 카드를 낸 뒤 덱에서 새로 뽑아 손패에 추가된 카드 표시(행동 유도가 아니라 정보
+     제공용이라 펄스 애니메이션 없이 정적으로만 표시) */
+  .card.bonus-drawn{box-shadow:0 0 0 3px #5cc8ff, 0 0 10px 2px rgba(92,200,255,.6);}
   @keyframes scoreHighlightPulse{0%,100%{box-shadow:0 0 0 3px #4ade80, 0 0 10px 2px rgba(74,222,128,.7);} 50%{box-shadow:0 0 0 3px #4ade80, 0 0 16px 5px rgba(74,222,128,.95);}}
   .flyer-card{position:fixed; z-index:999; pointer-events:none; transform:translate(-50%,-50%); transition:left .38s ease, top .38s ease, width .38s ease, height .38s ease; box-shadow:0 6px 14px rgba(0,0,0,.5);}
   @keyframes choosePulse{0%,100%{transform:translateY(0);} 50%{transform:translateY(-3px);}}
@@ -190,7 +193,7 @@
   #goToast.show{opacity:1; transform:translate(-50%,-50%);}
   #goToast .go-toast-name{color:var(--cream); font-size:14px; font-weight:700; letter-spacing:1px;}
   #goToast .go-toast-main{color:#ff5c3c; font-size:30px; font-weight:900; letter-spacing:2px; text-shadow:0 2px 0 rgba(0,0,0,.5); margin:2px 0;}
-  #goToast .go-toast-sub{color:#ffb199; font-size:12.5px; font-weight:700;}
+  #goToast .go-toast-sub{color:#ffb199; font-size:12.5px; font-weight:700; white-space:nowrap;}
   @keyframes oppGoPulse{0%{box-shadow:0 0 0 3px #ff5c3c, 0 2px 3px rgba(0,0,0,.4);} 100%{box-shadow:0 2px 3px rgba(0,0,0,.4);}}
   .opp-panel.go-pulse{animation:oppGoPulse 1.4s ease;}
   #bonusToast{position:fixed; left:50%; top:22%; transform:translate(-50%,-40%); z-index:80; pointer-events:none;
@@ -200,7 +203,7 @@
   #bonusToast.show{opacity:1; transform:translate(-50%,-50%);}
   #bonusToast .bonus-toast-name{color:var(--cream); font-size:14px; font-weight:700; letter-spacing:1px;}
   #bonusToast .bonus-toast-main{color:#ffb04f; font-size:27px; font-weight:900; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,.5); margin:2px 0;}
-  #bonusToast .bonus-toast-sub{color:#ffd39a; font-size:12.5px; font-weight:700;}
+  #bonusToast .bonus-toast-sub{color:#ffd39a; font-size:12.5px; font-weight:700; white-space:nowrap;}
   /* 판이 시작될 때 카드를 막 나눠준 직후 잠깐 띄우는 안내 배너 — 컴퓨터가 곧바로 진행해버려
      초기 배분을 놓치지 않도록 텀을 준다. */
   #dealToast{position:fixed; left:50%; top:22%; transform:translate(-50%,-40%); z-index:80; pointer-events:none;
@@ -209,7 +212,7 @@
     opacity:0; transition:opacity .25s ease, transform .25s ease;}
   #dealToast.show{opacity:1; transform:translate(-50%,-50%);}
   #dealToast .deal-toast-main{color:var(--gold); font-size:19px; font-weight:900; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,.5); margin:2px 0; white-space:nowrap;}
-  #dealToast .deal-toast-sub{color:var(--cream); font-size:12.5px; font-weight:700;}
+  #dealToast .deal-toast-sub{color:var(--cream); font-size:12.5px; font-weight:700; white-space:nowrap;}
   /* 총통이 나면 그 4장을 다 같이 확인할 수 있도록 잠깐 공개하는 배너 */
   #chongtongToast{position:fixed; left:50%; top:20%; transform:translate(-50%,-40%); z-index:85; pointer-events:none;
     background:linear-gradient(180deg,#3a1414,#2a0d0d); border:2px solid var(--gold); border-radius:14px;
@@ -1694,14 +1697,14 @@ function cardWeight(card, playerIdx){
       // 이 카드는 나중에 열끗 또는 쌍피 중 유리한 쪽으로 확정되므로(예: 9월), 그 잠재력의
       // 하한을 쌍피 가치로 잡는다 — 실제로 거의 항상 쌍피 쪽이 같거나 더 유리하다.
       const usableForGodori = card.bird && godoriAchievable(playerIdx);
-      const asYeol = usableForGodori ? 1.2 : 1.25 + flatThresholdBonus('yeol', playerIdx);
-      return Math.max(5, asYeol);
+      const asYeol = usableForGodori ? 1.5 : 1.25 + flatThresholdBonus('yeol', playerIdx); // 1.2->1.5: 결합 가중치 통계 튜닝(세션 단위 페어드, N=8000, z=2.29)
+      return Math.max(6, asYeol); // 하한을 쌍피 가치(6, 아래에서 튜닝됨)와 맞춘다
     }
     // 고도리(새) 열끗이라도 이미 완성이 불가능해졌다면 단순 열끗과 같되, 마찬가지로 평문 점수 잠재력을 보정한다.
     const usableForGodori = card.bird && godoriAchievable(playerIdx);
-    return usableForGodori ? 1.2 : 1.25 + flatThresholdBonus('yeol', playerIdx);
+    return usableForGodori ? 1.5 : 1.25 + flatThresholdBonus('yeol', playerIdx); // 1.2->1.5: 결합 가중치 통계 튜닝(세션 단위 페어드, N=8000, z=2.29)
   }
-  return {ssangpi:5, pi:3}[card.type];
+  return {ssangpi:6, pi:3.5}[card.type]; // ssangpi 5->6, pi 3->3.5: 결합 가중치 통계 튜닝(세션 단위 페어드, N=8000, z=2.29)
 }
 /* 단/고도리 조합이 죽어버린 띠·열끗이라도, "5장 이상부터 1장당 1점"이라는 평문 점수 문턱에는
    여전히 기여한다. 내가 이미 캡처한 양(cap)과 손에 든 같은 종류(inHand, 아직 못 먹었지만
@@ -1973,7 +1976,7 @@ function scoreProximityValue(capturedPile, addedCards, handPile, playerIdx){
       if(godoriAchievable(playerIdx)){
         const birdsHand = handPile.filter(c=>c.type==='yeol'&&c.bird).length;
         const birds = Math.round(capturedPile.filter(c=>c.type==='yeol'&&c.bird).length + birdsHand*HAND_W);
-        if(birds===2) val += 4; // 고도리(5점) 완성 직전
+        if(birds===2) val += 5; // 고도리(5점) 완성 직전 — 단(3점, 2장 신호=3)과 점수 비율(3:5)을 맞춤
         else if(birds===1) val += 1; // 고도리도 한 장째부터 미리 신호를 준다
       }
     }
@@ -2474,7 +2477,7 @@ function assessGoStopFactors(playerIdx){
   // 다음 내 차례에 상대가 가로챌 수 없는 상태로 피 문턱을 확실히 넘는다면, 이건 막연한
   // 가능성이 아니라 사실상 정해진 결과다 — 상대 위협(oppRisk)이 크지 않은 한 고를 안 부를
   // 이유가 없으므로 훨씬 강하게 밀어준다.
-  if((pN+nearCertainPiGain)>=10) upside += 0.5;
+  if((pN+nearCertainPiGain)>=10) upside += 0.7; // 0.5→0.7: 2차 통계 튜닝(세션 단위 페어드 테스트 N=1000, z=3.33)
   for(let i=0;i<3;i++){
     if(i===playerIdx) continue;
     const oc=G.captured[i];
@@ -2874,7 +2877,11 @@ function processInitialChongtong(){
     const score={total:3, detail:['총통 3점'], gCount:0, gScore:0, tCount:0, yCount:0, piCount:0, pScore:0};
     const winnerCards = G.hands[winner.p].filter(c=>c.month===winner.month);
     showChongtongToast(winner.p, winner.month, winnerCards, ()=>{
-      finalizeRound(winner.p, score);
+      // 총통 카드를 실제로 손패에서 캡처 더미로 옮겨야 종료 화면/패널에서 점수 강조와
+      // 함께 제대로 보인다 — 지금까지는 토스트에만 보여주고 실제로는 옮기지 않고 있었다.
+      G.hands[winner.p] = G.hands[winner.p].filter(c=>c.month!==winner.month);
+      G.captured[winner.p] = G.captured[winner.p].concat(winnerCards);
+      finalizeRound(winner.p, score, winner.month);
     });
     return;
   }
@@ -3086,8 +3093,8 @@ function resolvePpeokBonus(playerIdx, ppeokPending, onDone){
   if(!ppeokPending){ onDone(); return; }
   const gains = ttadakGains(playerIdx);
   if(gains.length>0){
-    addLog('&nbsp;&nbsp;↳ 뻑 완성: '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
-    showPiBonusToast(playerIdx, '뻑 완성', gains, ()=>{
+    addLog('&nbsp;&nbsp;↳ 뻑 획득: '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
+    showPiBonusToast(playerIdx, '뻑 획득', gains, ()=>{
       runTtadakTransfers(playerIdx, gains, onDone);
     });
   } else {
@@ -3360,11 +3367,20 @@ function floorOverlapAnchor(card, overlapOffset=0.5){
   }
   return null;
 }
+/* 손패를 낼 때 바닥에서 겹쳐 보일 위치 — 같은 월 바닥 카드가 여러 장(2장 중 하나를 나중에
+   고르는 경우, 3장이 뻑으로 묶이는 경우)이면 그중 어느 한 장과 겹치면 "이미 그 카드와
+   짝지어졌다"는 오해를 주므로, 해당 카드들의 정중앙 위치로 겹쳐 보이게 한다. 매칭이 아예
+   없어 그냥 버려지는 패라면 특정 카드와 겹칠 이유가 없으므로, 덱 카드를 뒤집을 때 내려놓는
+   바닥 중앙 하단 자리(floorRevealAnchor)와 동일한 위치를 쓴다. */
 function handPlayFloorAnchor(card){
-  const match = G.floor.find(c=>c.month===card.month);
-  const overlap = floorOverlapAnchor(match, 0.3);
-  if(overlap) return overlap;
-  return floorAnchor();
+  const matches = G.floor.filter(c=>c.month===card.month);
+  if(!matches.length) return floorRevealAnchor();
+  const anchors = matches.map(m=>floorOverlapAnchor(m, 0)).filter(Boolean);
+  if(!anchors.length) return floorRevealAnchor();
+  const w = anchors[0].w, h = anchors[0].h;
+  const x = anchors.reduce((s,a)=>s+a.x, 0) / anchors.length;
+  const y = anchors.reduce((s,a)=>s+a.y, 0) / anchors.length;
+  return {x, y: y + h*0.3, w, h};
 }
 function deckAnchor(){ return rectAnchor(document.getElementById('deckTopCard')) || floorAnchor(); }
 function panelAnchor(playerIdx){
@@ -3485,7 +3501,11 @@ function checkMidRoundChongtong(playerIdx){
   const score={total:3, detail:['총통 3점'], gCount:0, gScore:0, tCount:0, yCount:0, piCount:0, pScore:0};
   const winnerCards = G.hands[playerIdx].filter(c=>c.month===Number(month));
   showChongtongToast(playerIdx, month, winnerCards, ()=>{
-    finalizeRound(playerIdx, score);
+    // 총통 카드를 실제로 손패에서 캡처 더미로 옮겨야 종료 화면/패널에서 점수 강조와
+    // 함께 제대로 보인다 — 지금까지는 토스트에만 보여주고 실제로는 옮기지 않고 있었다.
+    G.hands[playerIdx] = G.hands[playerIdx].filter(c=>c.month!==Number(month));
+    G.captured[playerIdx] = G.captured[playerIdx].concat(winnerCards);
+    finalizeRound(playerIdx, score, Number(month));
   });
   return true;
 }
@@ -3502,6 +3522,7 @@ function playBonusHandCard(playerIdx, card){
     if(!G || G.roundOver) return;
     const drawnCard = G.deck.pop();
     if(drawnCard){
+      drawnCard.bonusDrawn = true; // 손패에서 어떤 카드가 방금 뽑힌 건지 표시해 준다(카드를 내면 자연히 사라짐)
       G.hands[playerIdx].push(drawnCard);
       addLog(PLAYER_NAMES[playerIdx]+': 덱에서 한 장을 손패로 가져옵니다.');
       if(checkMidRoundChongtong(playerIdx)) return;
@@ -3940,6 +3961,8 @@ function chooseFlexMode(mode){
 }
 function afterTurn(playerIdx, capturedThisTurn){
   if(!G || G.roundOver) return;
+  // 보너스 카드로 뽑은 패 표시는 그 턴에서만 보이면 되므로, 이 턴이 끝나는 시점(=여기)에 지운다.
+  G.hands[playerIdx].forEach(c=>{ delete c.bonusDrawn; });
   if(G.bonusPending && G.bonusPending.playerIdx===playerIdx){
     const pendingBonus = G.floor.find(c=>c.id===G.bonusPending.cardId);
     G.bonusPending = null;
@@ -4055,14 +4078,18 @@ function applyGobak(G, results){
 function declarePendingShakes(playerIdx){
   checkShakeCandidates(playerIdx).forEach(m=>declareShake(playerIdx, m));
 }
-function finalizeRound(winnerIdx, baseScore){
+function finalizeRound(winnerIdx, baseScore, chongtongMonth){
   declarePendingShakes(winnerIdx);
   G.roundOver=true;
   G.lastWinner=winnerIdx;
-  // 스톱으로 라운드가 끝나는 순간, 그 사람의 캡처 패널에서 실제로 점수에 반영된 패들을
-  // 강조 표시할 수 있도록 표시해 둔다(총통 등 문턱 조합이 없는 승리는 강조할 패가 없을 수 있다).
-  G.scoreHighlight = {playerIdx: winnerIdx, ids: scoringCardIds(G.captured[winnerIdx])};
   const isChongtong = (baseScore.detail||[]).includes('총통 3점');
+  // 스톱으로 라운드가 끝나는 순간, 그 사람의 캡처 패널에서 실제로 점수에 반영된 패들을
+  // 강조 표시할 수 있도록 표시해 둔다. 총통은 문턱 조합(광/단/열끗/피)과 무관하게 그
+  // 월 4장 자체가 점수 사유이므로 별도로 그 4장을 강조 대상으로 잡는다.
+  const scoreHighlightIds = isChongtong
+    ? new Set(G.captured[winnerIdx].filter(c=>c.month===chongtongMonth).map(c=>c.id))
+    : scoringCardIds(G.captured[winnerIdx]);
+  G.scoreHighlight = {playerIdx: winnerIdx, ids: scoreHighlightIds};
   const goCount=G.goCount[winnerIdx];
   const goMultiplier = goCount>=3 ? Math.pow(2, goCount-2) : 1;
   const shakeMultiplier = Math.pow(2, G.shakeCount[winnerIdx]||0);
@@ -4291,6 +4318,7 @@ function render(){
     }
     if(bombCardIds && bombCardIds.has(card.id)) el.classList.add('choose-target');
     else if(shakeMonths && shakeMonths.has(card.month)) el.classList.add('shake-target');
+    if(card.bonusDrawn) el.classList.add('bonus-drawn'); // 보너스 카드를 낸 뒤 덱에서 새로 뽑은 카드 표시
     handEl.appendChild(el);
   });
 
@@ -4383,8 +4411,10 @@ function showRoundEndOverlay(winnerIdx, baseScore, goCount, multiplier, finalSco
   let body = '<b>'+PLAYER_NAMES[winnerIdx]+'</b> 기본 '+baseScore.total+'점';
   if(baseScore.detail.length) body += ' ('+baseScore.detail.join(', ')+')';
   // 이 종료 팝업은 화면 전체를 덮어서 뒤쪽 캡처 패널의 강조 표시가 안 보이므로, 점수를
-  // 만든 카드들을 팝업 안에 직접 작게 보여준다.
-  const scoreIds = scoringCardIds(G.captured[winnerIdx]);
+  // 만든 카드들을 팝업 안에 직접 작게 보여준다. finalizeRound가 이미 총통까지 감안해
+  // 정해 둔 강조 대상(G.scoreHighlight)을 그대로 재사용한다.
+  const scoreIds = (G.scoreHighlight && G.scoreHighlight.playerIdx===winnerIdx)
+    ? G.scoreHighlight.ids : scoringCardIds(G.captured[winnerIdx]);
   if(scoreIds.size){
     const scoreCards = sortByMonth(G.captured[winnerIdx].filter(c=>scoreIds.has(c.id)));
     body += '<div style="display:flex; gap:3px; flex-wrap:wrap; margin:8px 0;">'+
