@@ -1685,26 +1685,26 @@ function godoriAchievable(playerIdx){
   return owners.size<=1;
 }
 function cardWeight(card, playerIdx){
-  if(card.type==='gwang') return card.month===12 ? 2.8 : 5; // 비광은 3광 점수를 3→2점으로 깎으므로 살짝 낮게 (일반광 4→5: 라운드 단위 시뮬레이션 튜닝, z=3.8)
+  if(card.type==='gwang') return card.month===12 ? 4 : 5; // 비광 2.8->4: 6차 통계 튜닝(baa9eb4 고정 베이스라인 대비, 세션 단위 페어드 N=8000, z=2.81)
   if(card.type==='tti'){
     // 비띠, 혹은 이미 다른 두 사람에게 갈려서 단 완성이 불가능해진 색이면 단 조합으로는 가치가 없다.
     // 다만 그래도 "5장 이상=1점"이라는 평문 점수는 남아있으므로, 내가 이미 모은 양+손에 든 잠재력을 봐서 보정한다.
     const usableForDan = card.ttiType && ttiComboAchievable(card.ttiType, playerIdx);
-    return usableForDan ? 2 : 1.2 + flatThresholdBonus('tti', playerIdx);
+    return usableForDan ? 2 : 1 + flatThresholdBonus('tti', playerIdx); // 죽은 띠 1.2->1: 6차 통계 튜닝
   }
   if(card.type==='yeol'){
     if(card.flexible){
       // 이 카드는 나중에 열끗 또는 쌍피 중 유리한 쪽으로 확정되므로(예: 9월), 그 잠재력의
       // 하한을 쌍피 가치로 잡는다 — 실제로 거의 항상 쌍피 쪽이 같거나 더 유리하다.
       const usableForGodori = card.bird && godoriAchievable(playerIdx);
-      const asYeol = usableForGodori ? 2 : 1.2 + flatThresholdBonus('yeol', playerIdx); // 단과 동일하게 정리(achievable=2, dead=1.2)
+      const asYeol = usableForGodori ? 2 : 1 + flatThresholdBonus('yeol', playerIdx); // 죽은 열끗 1.2->1: 6차 통계 튜닝
       return Math.max(6, asYeol); // 하한을 쌍피 가치(6)와 맞춘다
     }
     // 고도리(새) 열끗이라도 이미 완성이 불가능해졌다면 단순 열끗과 같되, 마찬가지로 평문 점수 잠재력을 보정한다.
     const usableForGodori = card.bird && godoriAchievable(playerIdx);
-    return usableForGodori ? 2 : 1.2 + flatThresholdBonus('yeol', playerIdx); // 단과 동일하게 정리(achievable=2, dead=1.2)
+    return usableForGodori ? 2 : 1 + flatThresholdBonus('yeol', playerIdx); // 죽은 열끗 1.2->1: 6차 통계 튜닝
   }
-  return {ssangpi:6, pi:3.5}[card.type]; // ssangpi 5->6, pi 3->3.5: 결합 가중치 통계 튜닝(세션 단위 페어드, N=8000, z=2.29)
+  return {ssangpi:6, pi:3}[card.type]; // 피 3.5->3: 6차 통계 튜닝(baa9eb4 고정 베이스라인 대비, N=8000, z=2.81)
 }
 /* 단/고도리 조합이 죽어버린 띠·열끗이라도, "5장 이상부터 1장당 1점"이라는 평문 점수 문턱에는
    여전히 기여한다. 내가 이미 캡처한 양(cap)과 손에 든 같은 종류(inHand, 아직 못 먹었지만
