@@ -2199,13 +2199,18 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
     // (예: 초단 완성 직전이라 값싼 쪽 tti를 내야 하는 경우) 그 tier에서 먼저 걸러지므로
     // 여기까지 내려오지 않는다.
     const sameMonthRival = matches.length===1 && best && best.month===card.month;
+    // sameMonthRival(예: 11월 쌍피 vs 피처럼 캡처 결과(taken)가 완전히 동일한 후보)일 때는
+    // handSupport를 건너뛴다 — handSupport는 "내는 손패의 타입"이 손에 남는 다른 카드와
+    // 얼마나 겹치는지를 보는데, 피는 워낙 흔해서(다른 월 피가 손에 있으면) 그냥 우연히
+    // 쌍피보다 피 쪽 handSupport가 더 높게 나오는 경우가 많다 — 이건 이번 캡처와 무관한
+    // 잡음이므로, mineValue까지 동점이면 바로 cardWeight(더 비싼 손패를 우선 소모) 비교로 간다.
     const better = !bestScore
       || immediateScore>bestScore.immediateScore
       || (immediateScore===bestScore.immediateScore && blockRisk>bestScore.blockRisk)
       || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && mineValue>bestScore.mineValue)
-      || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && mineValue===bestScore.mineValue && handSupport>bestScore.handSupport)
-      || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && mineValue===bestScore.mineValue && handSupport===bestScore.handSupport && sameMonthRival && cardWeight(card,playerIdx)>cardWeight(best,playerIdx))
-      || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && mineValue===bestScore.mineValue && handSupport===bestScore.handSupport && !sameMonthRival && baseWeight>bestScore.baseWeight);
+      || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && mineValue===bestScore.mineValue && sameMonthRival && cardWeight(card,playerIdx)>cardWeight(best,playerIdx))
+      || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && mineValue===bestScore.mineValue && !sameMonthRival && handSupport>bestScore.handSupport)
+      || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && mineValue===bestScore.mineValue && !sameMonthRival && handSupport===bestScore.handSupport && baseWeight>bestScore.baseWeight);
     if(better){ bestScore={immediateScore,blockRisk,mineValue,handSupport,baseWeight}; best=card; }
   }
   if(best) return best;
@@ -2437,7 +2442,39 @@ function assessGoStopFactors(playerIdx){
 
   let upside = 0;
   if((G.shakeCount[playerIdx]||0)>0) upside += 0.1875;
-  if(G.goCount[playerIdx]===2) upside += 0.25; // 이번에 고를 하면 3고 달성 → x2 배율
+  // 3고부터는 고를 한 번 더 할 때마다 배율이 그대로 다시 2배가 된다(3고 x2 → 4고 x4 →
+  // 5고 x8 ...) — 이 배가 효과는 3고를 막 넘긴 뒤에도 똑같이 반복되므로, 처음 3고를 달성할
+  // 때만이 아니라 이미 3고 이상인 상태에서도 똑같이 적극적으로 반영한다.
+  if(G.goCount[playerIdx]>=2) upside += 0.25;
+  // 3고 이상까지 갈 잠재력은 처음 고를 부르는 시점부터 이미 어느 정도 가늠할 수 있다 —
+  // 이번 판에 내가 앞으로 몇 번 더 패를 낼 수 있는지(남은 손패 수)가 많을수록 추가로 점수를
+  // 낼 기회 자체가 많고, 특히 피 문턱(10장)까지 "곧 확실히 채울 수 있는" 만큼만 모자라면
+  // 훨씬 쉽게 고를 이어갈 수 있다: 손에 보너스 카드(쌍피 취급)가 있거나, 바닥에 내 손패와
+  // 같은 월의 피/쌍피가 있어 다음에 그대로 가져올 수 있는 경우 모두 "곧 확정될 피"로 본다.
+  // 바닥 카드를 가져오는 캡처는 "바닥 카드"뿐 아니라 그걸 잡는 데 쓴 손패 자체도 함께
+  // 내 캡처 더미로 들어오므로(둘 다 피/쌍피면 둘 다 더해짐), 그 손패 쪽 기여도 같이 센다.
+  // 다만 그 월의 나머지 카드가 아직 안 보이는 상태면(hiddenCount>0) 상대가 먼저 가져갈
+  // 수도 있어 확정이 아니므로, 그 월 4장이 전부 설명된(=아무도 못 끼어드는) 경우만 센다.
+  const turnsLeft = hand.length;
+  const allCapturedForPi = [0,1,2].flatMap(i=>G.captured[i]);
+  const nearCertainPiGain = (hand.some(c=>c.isBonus) ? 2 : 0) +
+    G.floor.reduce((s,f)=>{
+      if(f.isBonus || (f.type!=='pi' && f.type!=='ssangpi')) return s;
+      const matchingHand = hand.find(h=>h.month===f.month);
+      if(!matchingHand) return s;
+      const monthAccounted = allCapturedForPi.filter(c=>c.month===f.month).length
+        + G.floor.filter(x=>x.month===f.month).length + hand.filter(h=>h.month===f.month).length;
+      if(monthAccounted<4) return s;
+      const floorGain = f.type==='ssangpi' ? 2 : 1;
+      const handGain = matchingHand.type==='ssangpi' ? 2 : (matchingHand.type==='pi' ? 1 : 0);
+      return s + floorGain + handGain;
+    }, 0);
+  const easyPiScoring = pN>=9 || (pN+nearCertainPiGain)>=10;
+  upside += Math.min(1, turnsLeft/6) * (easyPiScoring ? 0.3 : 0.15);
+  // 다음 내 차례에 상대가 가로챌 수 없는 상태로 피 문턱을 확실히 넘는다면, 이건 막연한
+  // 가능성이 아니라 사실상 정해진 결과다 — 상대 위협(oppRisk)이 크지 않은 한 고를 안 부를
+  // 이유가 없으므로 훨씬 강하게 밀어준다.
+  if((pN+nearCertainPiGain)>=10) upside += 0.5;
   for(let i=0;i<3;i++){
     if(i===playerIdx) continue;
     const oc=G.captured[i];
