@@ -2051,7 +2051,8 @@ function estimateTtadakValue(playerIdx){
    위 예외에 해당하지 않고 이미 일반 피가 있다면(위험이 없으므로) 평소처럼 바로 낸다. */
 function shouldPlayBonusNow(hand, floor, playerIdx){
   if(!hand.some(c=>c.isBonus)) return false;
-  const myPi = G.captured[playerIdx].filter(c=>c.type==='pi').length + G.captured[playerIdx].filter(c=>c.type==='ssangpi').length*2;
+  const myPlainPi = G.captured[playerIdx].filter(c=>c.type==='pi').length;
+  const myPi = myPlainPi + G.captured[playerIdx].filter(c=>c.type==='ssangpi').length*2;
 
   const oppPiBakThreat = [0,1,2].some(i=>i!==playerIdx && (G.captured[i].filter(c=>c.type==='pi').length+G.captured[i].filter(c=>c.type==='ssangpi').length*2)>=10);
   if(oppPiBakThreat && myPi>=1 && myPi<=5) return true; // 2) 피박 탈출이 급함 — 위험을 감수하고 바로 낸다
@@ -2063,7 +2064,10 @@ function shouldPlayBonusNow(hand, floor, playerIdx){
   });
   if(wantedFloor) return true; // 3) 원하는 고가치 패를 노리고 한 장 더 뽑아본다
 
-  if(myPi===0) return false; // 1) 아직 피가 없으면(쌍피만 노출될 위험) 미룬다
+  // 1) 일반 피가 하나도 없으면(아직 피가 전혀 없거나, 있어도 전부 쌍피뿐이면) 미룬다 — 뻑/따닥/쪽/폭탄
+  // 완성 시 상대에게 피를 내줘야 할 때 transferPiAnimated가 일반 피부터 찾고 없으면 쌍피를 대신
+  // 내주므로, 일반 피가 하나도 없는 채로 쌍피(지금 보너스)만 들고 있으면 그 쌍피를 통째로 뜯길 수 있다.
+  if(myPlainPi===0) return false;
 
   return true; // 위험이 없다면 평소처럼 바로 낸다
 }
