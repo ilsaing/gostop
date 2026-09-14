@@ -1697,12 +1697,12 @@ function cardWeight(card, playerIdx){
       // 이 카드는 나중에 열끗 또는 쌍피 중 유리한 쪽으로 확정되므로(예: 9월), 그 잠재력의
       // 하한을 쌍피 가치로 잡는다 — 실제로 거의 항상 쌍피 쪽이 같거나 더 유리하다.
       const usableForGodori = card.bird && godoriAchievable(playerIdx);
-      const asYeol = usableForGodori ? 1.5 : 1.25 + flatThresholdBonus('yeol', playerIdx); // 1.2->1.5: 결합 가중치 통계 튜닝(세션 단위 페어드, N=8000, z=2.29)
-      return Math.max(6, asYeol); // 하한을 쌍피 가치(6, 아래에서 튜닝됨)와 맞춘다
+      const asYeol = usableForGodori ? 2 : 1.2 + flatThresholdBonus('yeol', playerIdx); // 단과 동일하게 정리(achievable=2, dead=1.2)
+      return Math.max(6, asYeol); // 하한을 쌍피 가치(6)와 맞춘다
     }
     // 고도리(새) 열끗이라도 이미 완성이 불가능해졌다면 단순 열끗과 같되, 마찬가지로 평문 점수 잠재력을 보정한다.
     const usableForGodori = card.bird && godoriAchievable(playerIdx);
-    return usableForGodori ? 1.5 : 1.25 + flatThresholdBonus('yeol', playerIdx); // 1.2->1.5: 결합 가중치 통계 튜닝(세션 단위 페어드, N=8000, z=2.29)
+    return usableForGodori ? 2 : 1.2 + flatThresholdBonus('yeol', playerIdx); // 단과 동일하게 정리(achievable=2, dead=1.2)
   }
   return {ssangpi:6, pi:3.5}[card.type]; // ssangpi 5->6, pi 3->3.5: 결합 가중치 통계 튜닝(세션 단위 페어드, N=8000, z=2.29)
 }
