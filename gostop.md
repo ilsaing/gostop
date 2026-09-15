@@ -322,8 +322,15 @@ AI는 미래를 탐색하지 않는 **휴리스틱 가중치 방식**이며, 사
   `capturedPanelAnchor`/`capturedPiAnchor`/`capturedCardAnchor`/`handCardAnchor`, 3323~3427줄).
   - `handPlayFloorAnchor(card)`: 손패를 낼 때 바닥에서 겹쳐 보일 위치. 같은 월 바닥 카드가 여러 장(2장
     중 하나를 나중에 고르는 경우, 3장이 뻑으로 묶이는 경우)이면 그중 어느 한 장과 겹치면 "이미 짝지어졌다"는
-    오해를 주므로, 해당 카드들의 **정중앙(좌표 평균)** 위치로 겹치게 한다. 매칭이 아예 없어 그냥 버려지는
-    패라면 `floorRevealAnchor()`(덱 카드를 뒤집을 때 쓰는 바닥 중앙 하단 자리)와 동일한 위치를 쓴다.
+    오해를 주므로, 해당 카드들의 **정중앙(좌표 평균, `overlapAnchorForCards`)** 위치로 겹치게 한다. 매칭이
+    아예 없어 그냥 버려지는 패라면 `floorRevealAnchor()`(덱 카드를 뒤집을 때 쓰는 바닥 중앙 하단 자리)와
+    동일한 위치를 쓴다.
+  - 이 겹친 위치는 날아가는 애니메이션이 끝난 뒤에도 결과가 정해질 때까지 그대로 유지된다: 손패를 냈는데
+    바닥에 같은 월이 2장이라 덱 뒤집기 결과를 봐야 하는 동안은 `G.handPending`(`{card, matchCards}`)에,
+    사람이 둘 중 하나를 직접 골라야 하는 동안(`choosingCapture`)은 기존 `G.chooseCtx`에 대상이 담긴다.
+    `render()`는 이 두 카드를 바닥의 일반 흐름 배치에서 빼고, 대신 `renderFloorParkedCard()`로 상대 바닥
+    카드들 위에 겹쳐진 `position:fixed` 카드를 매 렌더마다 새로 계산해 붙인다 — 흐름 배치에 넣지 않으므로
+    동일 카드가 두 번 그려지는 일이 없고, 다른 바닥 변화로 기준 카드 위치가 조금씩 바뀌어도 계속 따라간다.
 - `safeTimeout(fn, delay)`(2578줄)와 `gameSession` 카운터: "나가기"나 "새 게임"으로 세션이 바뀐 뒤에도
   이전 라운드의 `setTimeout` 체인이 뒤늦게 실행되며 새 게임 상태를 건드리는 사고를 막는 안전장치.
   **턴 진행 중 지연 실행되는 코드를 추가할 때는 반드시 `setTimeout` 대신 `safeTimeout`을 쓸 것.** 단,

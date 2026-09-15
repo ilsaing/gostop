@@ -150,7 +150,6 @@
   .gostop-bar .go-btn{background:linear-gradient(180deg,#f0cf7c,var(--gold)); color:#20200a;}
   .gostop-bar .stop-btn{background:#3a2418; color:var(--cream); border:1px solid #5a3a24;}
   .choose-bar{width:100%; background:linear-gradient(180deg,#2a1e0c,#1c1508); border:1px solid var(--gold); border-radius:10px; padding:9px 12px; margin-bottom:8px; font-size:12px; font-weight:700; color:var(--gold); text-align:center; align-items:center; justify-content:center; flex-wrap:wrap;}
-  .floor-pending-break{flex-basis:100%; height:0;}
   .card.choose-target{box-shadow:0 0 0 3px var(--gold), 0 0 10px 2px rgba(227,185,79,.7); animation:choosePulse 1s ease-in-out infinite;}
   /* 흔들기 가능한 손패 3장 강조(안내 문구 없이 카드 자체만 표시) */
   .card.shake-target{box-shadow:0 0 0 3px #ff9d5c, 0 0 10px 2px rgba(255,157,92,.7); animation:choosePulse 1s ease-in-out infinite;}
@@ -1818,6 +1817,7 @@ function playHandCard(G, playerIdx, card, onHandDone){
   // 이 월의 마지막 한 장이면 굳이 고를 것 없이 3장(+낸 패) 모두 자동으로 쓸어가게 된다.
   // 일단 낸 패만 바닥에 내려놓고, 아직 캡처되지 않은 채로 턴을 이어간다.
   G.floor.push(card);
+  G.handPending = {card, matchCards: matches}; // 결과가 정해질 때까지 두 바닥패 중간에 겹쳐 보이도록 표시
   onHandDone({deferred:false, captured:false, cards:[card], ttadak:false, ppeokPending:false, pendingMatches:matches});
 }
 function chooseCaptureTarget(cardId){
@@ -1834,11 +1834,12 @@ function chooseCaptureTarget(cardId){
    패가 이 월의 마지막 한 장이었다면 이미 자동으로 다 쓸려가 card가 바닥에서 사라졌을 것이므로
    호출 전에 그 여부를 먼저 확인해야 한다. onDone(true/false)로 이번에 캡처가 일어났는지 알린다. */
 function resolvePendingFloorChoice(playerIdx, card, matches, onDone){
+  G.handPending = null; // 이 시점부터는 choosingCapture(있다면) 또는 즉시 확정이 이어받아 표시한다
   const liveMatches = matches.filter(m=>G.floor.some(f=>f.id===m.id));
   if(liveMatches.length===0){ onDone(false); return; }
   const finishChoice = (res)=>{
     logPlayResult(playerIdx, card, res);
-    const from = floorOverlapAnchor(card, 0.3) || floorAnchor();
+    const from = overlapAnchorForCards(liveMatches) || floorAnchor();
     animateCaptureSweepFrom(playerIdx, res.cards[res.cards.length-1], from, ()=>{ render(); onDone(true); });
   };
   if(playerIdx===HUMAN){
@@ -3379,20 +3380,40 @@ function floorOverlapAnchor(card, overlapOffset=0.5){
   }
   return null;
 }
+/* 바닥 카드 여러 장(2장 또는 3장)의 정중앙에 겹쳐 보이는 좌표를 계산한다 — 손패를 낼 때의
+   착지 지점과, 결과가 정해질 때까지 대기 중인 카드를 고정으로 보여줄 위치에 같은 기준을 쓴다. */
+function overlapAnchorForCards(cards){
+  const anchors = cards.map(c=>floorOverlapAnchor(c, 0)).filter(Boolean);
+  if(!anchors.length) return null;
+  const w = anchors[0].w, h = anchors[0].h;
+  const x = anchors.reduce((s,a)=>s+a.x, 0) / anchors.length;
+  const y = anchors.reduce((s,a)=>s+a.y, 0) / anchors.length;
+  return {x, y: y + h*0.3, w, h};
+}
 /* 손패를 낼 때 바닥에서 겹쳐 보일 위치 — 같은 월 바닥 카드가 여러 장(2장 중 하나를 나중에
    고르는 경우, 3장이 뻑으로 묶이는 경우)이면 그중 어느 한 장과 겹치면 "이미 그 카드와
    짝지어졌다"는 오해를 주므로, 해당 카드들의 정중앙 위치로 겹쳐 보이게 한다. 매칭이 아예
    없어 그냥 버려지는 패라면 특정 카드와 겹칠 이유가 없으므로, 덱 카드를 뒤집을 때 내려놓는
    바닥 중앙 하단 자리(floorRevealAnchor)와 동일한 위치를 쓴다. */
 function handPlayFloorAnchor(card){
-  const matches = G.floor.filter(c=>c.month===card.month);
+  const matches = G.floor.filter(c=>c.month===card.month && c.id!==card.id);
   if(!matches.length) return floorRevealAnchor();
-  const anchors = matches.map(m=>floorOverlapAnchor(m, 0)).filter(Boolean);
-  if(!anchors.length) return floorRevealAnchor();
-  const w = anchors[0].w, h = anchors[0].h;
-  const x = anchors.reduce((s,a)=>s+a.x, 0) / anchors.length;
-  const y = anchors.reduce((s,a)=>s+a.y, 0) / anchors.length;
-  return {x, y: y + h*0.3, w, h};
+  return overlapAnchorForCards(matches) || floorRevealAnchor();
+}
+/* 결과가 정해질 때까지 대기 중인 카드(낸 손패가 바닥 2장과 걸쳐 있거나, 사람이 어느 쪽을
+   가져올지 고르는 중인 카드)는 흐름 배치에서 빼고, 상대 바닥카드들 위에 겹쳐진 고정 위치에
+   따로 그린다 — render()마다 다시 계산해서 붙이므로 흐름이 바뀌어도 자연스럽게 따라간다. */
+function renderFloorParkedCard(card, matchCards){
+  const anchor = overlapAnchorForCards(matchCards);
+  if(!anchor) return;
+  const zf = currentZoomFactor();
+  const el = makeCardEl(card, false);
+  el.classList.add('flyer-card','floor-parked-card');
+  el.style.width=(anchor.w/zf)+'px';
+  el.style.height=(anchor.h/zf)+'px';
+  el.style.left=(anchor.x/zf)+'px';
+  el.style.top=(anchor.y/zf)+'px';
+  document.body.appendChild(el);
 }
 function deckAnchor(){ return rectAnchor(document.getElementById('deckTopCard')) || floorAnchor(); }
 function panelAnchor(playerIdx){
@@ -3837,6 +3858,7 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
     addLog(PLAYER_NAMES[playerIdx]+': 뻑이 될 수 없는 상황이라 뒤집혔던 보너스 카드를 획득합니다.');
   }
   if(!drawn){
+    G.handPending = null;
     // 덱이 다 떨어져 이번이 마지막 뽑기 시도였다면, 미뤄뒀던 둘 중 하나 고르기도 더 기다릴
     // 다음 기회가 없으므로 즉시 자동으로 확정한다(라운드가 바로 끝나 UI로 물어볼 의미가 없음).
     if(handRes.pendingMatches && G.floor.some(f=>f.id===handCard.id)){
@@ -3866,6 +3888,7 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
     const isJjok = !!(handCard && !handRes.captured && !handRes.pendingMatches && res.captured && drawn.month===handCard.month && hasMoreTurns(playerIdx));
     const finish=()=>{
       clearBonusFlyers();
+      G.handPending = null;
       render();
       if(handRes.playedFlyer) handRes.playedFlyer.remove();
       if(drawnFlyer) drawnFlyer.remove();
@@ -4262,12 +4285,15 @@ function render(){
     renderCapturedGrid(document.getElementById('oppCap'+i), G.captured[i], (G.scoreHighlight && G.scoreHighlight.playerIdx===i) ? G.scoreHighlight.ids : null);
   }
 
+  document.querySelectorAll('.floor-parked-card').forEach(el=>el.remove());
   const floorEl=document.getElementById('floorCards');
   floorEl.innerHTML='';
   const chooseCtx = (G.phase==='choosingCapture') ? G.chooseCtx : null;
   const chooseIds = chooseCtx ? new Set(chooseCtx.matches.map(c=>c.id)) : null;
+  const handPending = (G.handPending && G.floor.some(c=>c.id===G.handPending.card.id)) ? G.handPending : null;
   sortByMonth(G.floor).forEach(card=>{
-    if(chooseCtx && card.id===chooseCtx.card.id) return; // 선택 대기 중인 낸/뽑은 카드는 따로 아래에 그린다
+    if(chooseCtx && card.id===chooseCtx.card.id) return; // 선택/결과 대기 중인 카드는 겹쳐진 고정 위치로 따로 그린다
+    if(handPending && card.id===handPending.card.id) return;
     const el=makeCardEl(card,false);
     if(chooseIds && chooseIds.has(card.id)){
       el.classList.add('selectable','choose-target');
@@ -4275,13 +4301,8 @@ function render(){
     }
     floorEl.appendChild(el);
   });
-  if(chooseCtx){
-    // 원래 깔려있던 후보 카드들과 나란히 서지 않도록, 줄바꿈 스페이서로 아래 줄에 따로 표시한다.
-    const breakEl=document.createElement('div');
-    breakEl.className='floor-pending-break';
-    floorEl.appendChild(breakEl);
-    floorEl.appendChild(makeCardEl(chooseCtx.card,false));
-  }
+  if(chooseCtx) renderFloorParkedCard(chooseCtx.card, chooseCtx.matches);
+  if(handPending) renderFloorParkedCard(handPending.card, handPending.matchCards);
   document.getElementById('deckCount').textContent=G.deck.length;
   const deckStack=document.getElementById('deckStack');
   if(deckStack){
