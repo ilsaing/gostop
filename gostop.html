@@ -187,7 +187,7 @@
   #autoPlayPauseBtn:active{transform:scale(.96);}
   /* 컴퓨터가 "고"를 외칠 때 화면 중앙에 잠깐 띄우는 알림 배너 — 눈에 확 띄도록 */
   #goToast{position:fixed; left:50%; top:22%; transform:translate(-50%,-40%); z-index:80; pointer-events:none;
-    background:linear-gradient(180deg,#3a1414,#2a0d0d); border:2px solid #ff5c3c; border-radius:14px;
+    background:linear-gradient(180deg,var(--felt-a),var(--felt-b)); border:2px solid #ff5c3c; border-radius:14px;
     padding:14px 26px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.55), 0 0 0 4px rgba(255,92,60,.15);
     opacity:0; transition:opacity .25s ease, transform .25s ease;}
   #goToast.show{opacity:1; transform:translate(-50%,-50%);}
@@ -197,7 +197,7 @@
   @keyframes oppGoPulse{0%{box-shadow:0 0 0 3px #ff5c3c, 0 2px 3px rgba(0,0,0,.4);} 100%{box-shadow:0 2px 3px rgba(0,0,0,.4);}}
   .opp-panel.go-pulse{animation:oppGoPulse 1.4s ease;}
   #bonusToast{position:fixed; left:50%; top:22%; transform:translate(-50%,-40%); z-index:80; pointer-events:none;
-    background:linear-gradient(180deg,#3b2814,#2b1b0d); border:2px solid #e99a3d; border-radius:14px;
+    background:linear-gradient(180deg,var(--felt-a),var(--felt-b)); border:2px solid #e99a3d; border-radius:14px;
     padding:14px 26px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.55), 0 0 0 4px rgba(233,154,61,.15);
     opacity:0; transition:opacity .25s ease, transform .25s ease;}
   #bonusToast.show{opacity:1; transform:translate(-50%,-50%);}
@@ -207,7 +207,7 @@
   /* 판이 시작될 때 카드를 막 나눠준 직후 잠깐 띄우는 안내 배너 — 컴퓨터가 곧바로 진행해버려
      초기 배분을 놓치지 않도록 텀을 준다. */
   #dealToast{position:fixed; left:50%; top:22%; transform:translate(-50%,-40%); z-index:80; pointer-events:none;
-    background:linear-gradient(180deg,#14243b,#0d1a2b); border:2px solid var(--gold); border-radius:14px;
+    background:linear-gradient(180deg,var(--felt-a),var(--felt-b)); border:2px solid var(--gold); border-radius:14px;
     padding:14px 26px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.55), 0 0 0 4px rgba(227,185,79,.15);
     opacity:0; transition:opacity .25s ease, transform .25s ease;}
   #dealToast.show{opacity:1; transform:translate(-50%,-50%);}
@@ -215,7 +215,7 @@
   #dealToast .deal-toast-sub{color:var(--cream); font-size:12.5px; font-weight:700; white-space:nowrap;}
   /* 총통이 나면 그 4장을 다 같이 확인할 수 있도록 잠깐 공개하는 배너 */
   #chongtongToast{position:fixed; left:50%; top:20%; transform:translate(-50%,-40%); z-index:85; pointer-events:none;
-    background:linear-gradient(180deg,#3a1414,#2a0d0d); border:2px solid var(--gold); border-radius:14px;
+    background:linear-gradient(180deg,var(--felt-a),var(--felt-b)); border:2px solid var(--gold); border-radius:14px;
     padding:14px 22px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.55), 0 0 0 4px rgba(227,185,79,.2);
     opacity:0; transition:opacity .25s ease, transform .25s ease;}
   #chongtongToast.show{opacity:1; transform:translate(-50%,-50%);}
@@ -2154,14 +2154,22 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
 
     const mineValue = scoreProximityValue(G.captured[playerIdx], captureSet, hand.filter(h=>h!==card), playerIdx);      // 2순위: 내 먹은 패 기준 점수 근접도(손에 남는 패도 절반 가중)
     const restHand = hand.filter(c=>c!==card);
-    const handSupport = captureSet.reduce((s,c)=>s+restHand.filter(h=>h.type===c.type).length, 0); // 3순위: 손패 지원
+    // 3순위: 손패 지원 — 남는 손패와 타입이 겹치면 그만큼 시너지로 본다. 다만 띠는 단순히
+    // "띠라는 타입"만 같아서는 의미가 없다(색이 다르면 단 조합에 전혀 도움 안 됨) — 같은 색
+    // (ttiType)일 때만 실질적 시너지로 친다.
+    const handSupport = captureSet.reduce((s,c)=>{
+      if(c.type==='tti') return s + restHand.filter(h=>h.type==='tti' && h.ttiType===c.ttiType).length;
+      return s + restHand.filter(h=>h.type===c.type).length;
+    }, 0);
     // 뻑(3장 이상)을 완성하는 캡처라면, 그로 인한 따닥 보너스(상대 피)를 지금 상대가 실제로
     // 줄 수 있는 만큼만 반영한다 — 상대가 피가 없으면 지금은 보너스가 0이라는 뜻.
     const ttadakEstimate = taken.length>=3 ? estimateTtadakValue(playerIdx) : 0;
-    // 기본 가중치: 바닥에서 실제로 가져오는 이득(taken)은 온전히 반영하되, 이걸 위해 "쓰는" 손패
-    // 카드의 가치는 절반만 반영한다 — 그래야 서로 다른 월의 캡처 후보가 여럿일 때, 가치 낮은
-    // 손패부터 먼저 소모하고 가치 높은(광 등) 손패는 다음 기회를 위해 아끼는 쪽을 선호하게 된다.
-    // (그 손패 카드 자체도 결국 내 캡처 패가 되어 점수에는 그대로 반영되므로 완전히 깎지는 않는다.)
+    // 기본 가중치: 바닥에서 가져오는 이득(taken)과 이를 위해 "쓰는" 손패 카드의 가치를 모두
+    // 온전히 반영한다 — 어느 쪽이든 결국 내 캡처 더미로 들어가 점수에 반영되므로 "쓰는" 손패도
+    // 손해가 아니라 그대로 획득한 가치다. 기본은 이번 턴에 확보하는 총 가치가 가장 큰 후보를
+    // 고르는 것이고, 손패를 아껴두는 게 유리한 경우(예: 그 손패와 짝지어질 값진 패를 나중에
+    // 가로챌 기회 등)는 baseWeight가 아니라 위쪽의 더 구체적인 판단(흔들기 상대 값진 패 대기,
+    // 뻑 스윕 미루기 등)에서 별도로 걸러진다.
     const floorGain = taken.reduce((s,c)=>s+cardWeight(c,playerIdx),0);
     const handCardCost = cardWeight(card,playerIdx);
     // 이번 캡처 후 남는 손패 중, 같은 월끼리 겹쳐 있는(그래서 사실상 하나면 충분한데 여러 장이
@@ -2197,7 +2205,7 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
         ppeokFormRisk = drawProb * floorGainForRisk * (G.goCount[playerIdx]>0 ? 1.5 : 1.0);
       }
     }
-    const baseWeight = floorGain - handCardCost*0.3 - deadCardPenalty - ppeokFormRisk + ttadakEstimate;      // 기본 가중치(+뻑 완성 시 실제 기대 보너스) (0.5→0.3: 시뮬레이션 튜닝, 손패를 덜 아까워하고 더 적극적으로 챙김)
+    const baseWeight = floorGain + handCardCost - deadCardPenalty - ppeokFormRisk + ttadakEstimate;      // 기본 가중치 — 쓰는 손패도 결국 획득한 가치이므로 할인 없이 온전히 더한다(더 이상 아껴두지 않음)
     // 같은 월 손패가 2장 이상이라 어느 걸 내도 이번 캡처 결과(taken)가 완전히 동일한
     // 상대(예: 11월 쌍피 vs 피, 9월 유동형 열끗 vs 피)라면, 위 우선순위들이 전부 동점일 때
     // baseWeight(값진 손패를 아낀다는 일반 규칙) 대신 더 비싼 손패를 내는 쪽을 우선한다 —
@@ -4420,10 +4428,7 @@ function showRoundEndOverlay(winnerIdx, baseScore, goCount, multiplier, finalSco
   const scoreIds = (G.scoreHighlight && G.scoreHighlight.playerIdx===winnerIdx)
     ? G.scoreHighlight.ids : scoringCardIds(G.captured[winnerIdx]);
   if(scoreIds.size){
-    const scoreCards = sortByMonth(G.captured[winnerIdx].filter(c=>scoreIds.has(c.id)));
-    body += '<div style="display:flex; gap:3px; flex-wrap:wrap; margin:8px 0;">'+
-      scoreCards.map(c=>{ const el=makeCardEl(c,true); el.classList.add('score-highlight'); return el.outerHTML; }).join('')+
-      '</div>';
+    body += '<div id="overlayScoreCards" style="margin:8px 0;"></div>';
   }
   if(goCount>0) body += '<br>+'+goCount+'고 = '+(baseScore.total+goCount)+'점';
   const shakeN = G.shakeCount[winnerIdx]||0;
@@ -4440,6 +4445,10 @@ function showRoundEndOverlay(winnerIdx, baseScore, goCount, multiplier, finalSco
   body += '<br>현재 보유 금액 — '+PLAYER_NAMES.map((n,i)=>n+' '+won(G.coins[i])).join(' · ');
   document.getElementById('overlayTitle').textContent=title;
   document.getElementById('overlayBody').innerHTML=body;
+  if(scoreIds.size){
+    const scoreCards = sortByMonth(G.captured[winnerIdx].filter(c=>scoreIds.has(c.id)));
+    renderCapturedGrid(document.getElementById('overlayScoreCards'), scoreCards, scoreIds);
+  }
   const btns=document.getElementById('overlayBtns');
   btns.innerHTML='';
   const nextBtn=document.createElement('button');
