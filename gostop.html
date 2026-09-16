@@ -324,7 +324,7 @@
         <b>뻑</b> — 바닥에 이미 있는 카드, 내가 낸 카드, 이어서 뽑은 카드까지 월이 모두 같으면 뻑입니다. 이 경우 3장 모두 가져가지 못하고 바닥에 그대로 묶입니다. 나중에 그 월의 마지막 한 장으로 묶인 3장을 가져가게 되면, 그 사람은 다른 두 명에게서 피를 1장씩 받습니다. 한 사람이 그 판에서 뻑을 3번 만들면, 그 자리에서 3점으로 즉시 승리합니다.<br><br>
         <b>따닥</b> — 바닥에 같은 월이 2장 있을 때, 낸 패로 1장을 가져오고 이어서 뽑은 패도 같은 월이라 나머지 1장까지 가져오게 되면, 다른 두 사람에게서 피를 1장씩 받습니다.<br><br>
         <b>쪽</b> — 바닥에 없는 월의 패를 내서 그냥 놓였는데, 이어서 뽑은 패가 낸 패와 같은 월이라 바로 가져가게 되면, 다른 두 명에게서 피를 1장씩 받습니다. 단, 손에 남은 마지막 패를 낸 경우에는 적용되지 않습니다.<br><br>
-        <b>싹쓸이</b> — 패를 내어 먹은 뒤 바닥에 카드가 한 장도 남지 않으면, 다른 두 명에게서 피를 1장씩 받습니다. 단, 손에 남은 마지막 패를 낸 경우에는 적용되지 않습니다.<br><br>
+        <b>싹쓸이(쓸)</b> — 패를 내어 먹은 뒤 바닥에 카드가 한 장도 남지 않으면, 다른 두 명에게서 피를 1장씩 받습니다. 단, 손에 남은 마지막 패를 낸 경우에는 적용되지 않습니다.<br><br>
 
         <div class="rule-group-title">▶ 특수 카드와 상황</div>
         <b>11월·9월 특수 규칙</b> — 11월 열끗은 항상 쌍피로 취급됩니다. 9월 열끗은 가져올 때 열끗과 쌍피 중 원하는 쪽으로 선택해서 쓸 수 있습니다.<br><br>
@@ -1840,7 +1840,7 @@ function resolvePendingFloorChoice(playerIdx, card, matches, onDone){
   const finishChoice = (res)=>{
     logPlayResult(playerIdx, card, res);
     const from = overlapAnchorForCards(liveMatches) || floorAnchor();
-    animateCaptureSweepFrom(playerIdx, res.cards[res.cards.length-1], from, ()=>{ render(); onDone(true); });
+    animateCaptureSweepFrom(playerIdx, res.cards, from, ()=>{ render(); onDone(true); });
   };
   if(playerIdx===HUMAN){
     G.phase='choosingCapture';
@@ -2912,7 +2912,11 @@ function processInitialFloorBonusCard(){
   G.captured[G.dealer].push(initialBonusCard);
   addLog(PLAYER_NAMES[G.dealer]+': 바닥에 처음부터 보너스 카드가 깔려 그대로 가져갑니다.');
   render();
-  flyCardVisual(initialBonusCard, from, capturedPanelAnchor(G.dealer), 480, ()=>{
+  const el = capturedCardEl(G.dealer, initialBonusCard.id);
+  const to = (el && rectAnchor(el)) || capturedPiAnchor(G.dealer);
+  if(el) el.style.visibility='hidden';
+  flyCardVisual(initialBonusCard, from, to, 480, ()=>{
+    if(el) el.style.visibility='';
     if(!G) return;
     const replacement = G.deck.length>0 ? G.deck.pop() : null;
     if(!replacement){ processInitialFloorQuadMonth(); return; }
@@ -2938,7 +2942,7 @@ function processInitialFloorQuadMonth(){
   G.captured[G.dealer] = G.captured[G.dealer].concat(matches);
   addLog(PLAYER_NAMES[G.dealer]+': 바닥에 처음부터 '+quadMonth+'월 4장이 깔려 그대로 가져갑니다.');
   render();
-  animateCaptureSweepFrom(G.dealer, matches[matches.length-1], from, ()=>{
+  animateCaptureSweepFrom(G.dealer, matches, from, ()=>{
     render();
     processInitialFloorTripleMonth();
   });
@@ -3037,6 +3041,28 @@ function showPiBonusToast(playerIdx, eventName, gainers, onDone){
       '<div class="bonus-toast-name">'+PLAYER_NAMES[playerIdx]+'</div>'+
       '<div class="bonus-toast-main">'+eventName+'!</div>'+
       '<div class="bonus-toast-sub">'+gainers.map(i=>PLAYER_NAMES[i]).join(', ')+'에게서 피 1장씩 받음</div>';
+    toast.classList.remove('show');
+    void toast.offsetWidth;
+    toast.classList.add('show');
+  }, ()=>{
+    const toast = document.getElementById('bonusToast');
+    if(toast) toast.classList.remove('show');
+  }, 1800, onDone);
+}
+/* 뻑이 만들어져 3장이 바닥에 묶이고 이번 턴엔 패를 가져가지 못했음을 알리는 배너.
+   onDone은 배너가 사라진 뒤 호출된다 — 호출부는 이 안에서 다음 진행을 이어가야 한다. */
+function showPpeokFormedToast(playerIdx, onDone){
+  queueToast(()=>{
+    let toast = document.getElementById('bonusToast');
+    if(!toast){
+      toast = document.createElement('div');
+      toast.id = 'bonusToast';
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML =
+      '<div class="bonus-toast-name">'+PLAYER_NAMES[playerIdx]+'</div>'+
+      '<div class="bonus-toast-main">뻑!</div>'+
+      '<div class="bonus-toast-sub">같은 월 3장이 바닥에 묶여 패를 획득하지 못했습니다</div>';
     toast.classList.remove('show');
     void toast.offsetWidth;
     toast.classList.add('show');
@@ -3210,7 +3236,7 @@ function executeBomb(playerIdx, bomb){
       addLog(PLAYER_NAMES[playerIdx]+': <b>폭탄!</b> '+bomb.month+'월 3장을 동시에 내서 4장 획득');
       render();
       safeTimeout(()=>{
-        animateCaptureSweepFrom(playerIdx, capturedCards[capturedCards.length-1], floorAnchor(), ()=>{
+        animateCaptureSweepFrom(playerIdx, capturedCards, floorAnchor(), ()=>{
           render();
           safeTimeout(()=>{
             const proceedDraw = ()=>doDraw(playerIdx, null, {deferred:false, captured:true, cards:capturedCards});
@@ -3439,12 +3465,17 @@ function capturedPiAnchor(playerIdx){
   }
   return capturedPanelAnchor(playerIdx);
 }
+/* 특정 카드가 실제로 놓여있는(또는 놓일) captured 패널 안 DOM 엘리먼트를 찾는다.
+   캡처 스윕 애니메이션에서 "최종 도착 지점"을 구하고, 애니메이션이 끝날 때까지
+   그 실제 카드를 숨겨두는 용도로 함께 쓰인다. */
+function capturedCardEl(playerIdx, cardId){
+  const el = playerIdx===HUMAN ? document.getElementById('humanCap') : document.getElementById('oppCap'+playerIdx);
+  return el && typeof el.querySelector==='function' ? el.querySelector('.card[data-card-id="'+cardId+'"]') : null;
+}
 /* 특정 카드가 실제로 놓여있는 captured 패널 안 위치를 정확히 찾는다(피 보상 애니메이션의
    출발점용). 해당 카드 DOM을 못 찾으면(렌더 타이밍 등) 패널 전체 앵커로 대체한다. */
 function capturedCardAnchor(playerIdx, cardId){
-  const el = playerIdx===HUMAN ? document.getElementById('humanCap') : document.getElementById('oppCap'+playerIdx);
-  const card = el && typeof el.querySelector==='function' ? el.querySelector('.card[data-card-id="'+cardId+'"]') : null;
-  return rectAnchor(card) || capturedPanelAnchor(playerIdx);
+  return rectAnchor(capturedCardEl(playerIdx, cardId)) || capturedPanelAnchor(playerIdx);
 }
 function handCardAnchor(cardId){
   const el = document.querySelector('.hand-row .card[data-card-id="'+cardId+'"]');
@@ -3491,30 +3522,64 @@ function moveFlyerVisual(flyer, from, to, duration, onDone){
   });
   setTimeout(()=>{ if(onDone) onDone(flyer); }, duration+20);
 }
+/* 호출 시점엔 이미 G.captured/G.floor가 이번 캡처를 반영해 변경된 상태다(호출부가 먼저
+   performCapture 등으로 데이터를 바꾼 뒤 이 함수를 부른다). 그래서 먼저 render()로 최종
+   배치를 실제로 그려버리되, 지금 날아가는 중인 카드들만 화면에서 숨겨뒀다가, 각자 플라이어가
+   바닥에서 그 실제 자리까지 도착하는 순간 숨김을 풀어 바꿔치기한다 — 패널 중앙으로 날아간 뒤
+   순간이동으로 자리를 잡던 예전 방식과 달리, 처음부터 각자의 최종 자리를 목적지로 날아간다.
+   card는 카드 한 장이어도 되고, 한 번에 여러 장을 캡처한 경우(손패+바닥패 2장, 뻑/폭탄 등)엔
+   배열로 넘기면 모두 같은 출발점(from)에서 동시에 각자의 자리로 날아간다. */
 function animateCaptureSweep(playerIdx, card, onDone){
-  flyCardVisual(card, floorAnchor(), panelAnchor(playerIdx), 380, onDone);
+  animateCaptureSweepFrom(playerIdx, card, floorAnchor(), onDone);
 }
-function animateCaptureSweepFrom(playerIdx, card, from, onDone){
-  flyCardVisual(card, from || floorAnchor(), panelAnchor(playerIdx), 380, onDone);
-}
-function animateDrawnCapture(playerIdx, drawn, result, onDone, drawnFlyer){
-  const matched = result.cards && result.cards.find(c=>c.id!==drawn.id && c.month===drawn.month);
-  const overlap = floorOverlapAnchor(matched, 0.3);
-  const finish=()=>{ if(drawnFlyer) drawnFlyer.remove(); if(onDone) onDone(); };
-  if(drawnFlyer){
-    if(!overlap){ moveFlyerVisual(drawnFlyer, floorAnchor(), panelAnchor(playerIdx), 380, finish); return; }
-    moveFlyerVisual(drawnFlyer, floorAnchor(), overlap, 300, ()=>{
-      moveFlyerVisual(drawnFlyer, overlap, panelAnchor(playerIdx), 380, finish);
-    });
-    return;
-  }
-  if(!overlap){
-    animateCaptureSweep(playerIdx, drawn, onDone);
-    return;
-  }
-  flyCardVisual(drawn, floorAnchor(), overlap, 300, ()=>{
-    animateCaptureSweepFrom(playerIdx, drawn, overlap, onDone);
+function animateCaptureSweepFrom(playerIdx, cards, from, onDone){
+  const list = Array.isArray(cards) ? cards : [cards];
+  render();
+  if(list.length===0){ if(onDone) onDone(); return; }
+  const hidden=[];
+  let pending = list.length;
+  const done=()=>{
+    if(--pending>0) return;
+    hidden.forEach(el=>{ el.style.visibility=''; });
+    if(onDone) onDone();
+  };
+  list.forEach(card=>{
+    const el = capturedCardEl(playerIdx, card.id);
+    const to = (el && rectAnchor(el)) || panelAnchor(playerIdx);
+    if(el){ el.style.visibility='hidden'; hidden.push(el); }
+    flyCardVisual(card, from || floorAnchor(), to, 380, done);
   });
+}
+/* 뽑은 패로 캡처하는 경우: 뽑은 패 본인은 이미(덱을 뒤집는 시점에) 매치된 바닥패와 겹치는
+   위치로 옮겨져 대기 중이므로, 그 자리에서 곧장 최종 자리로 한 번에 날아간다. 함께 캡처된
+   다른 바닥 카드(들)는 각자 자기 위치에서 각자의 최종 자리로 동시에 날아간다. 모든 카드가
+   각자 자리에 도착해야 onDone이 불린다. */
+function animateDrawnCapture(playerIdx, drawn, result, onDone, drawnFlyer){
+  const others = (result.cards || []).filter(c=>c.id!==drawn.id);
+  render();
+  const drawnEl = capturedCardEl(playerIdx, drawn.id);
+  const drawnTo = (drawnEl && rectAnchor(drawnEl)) || panelAnchor(playerIdx);
+  const hidden = drawnEl ? [drawnEl] : [];
+  if(drawnEl) drawnEl.style.visibility='hidden';
+  let pending = 1;
+  const done=()=>{
+    if(--pending>0) return;
+    if(drawnFlyer) drawnFlyer.remove();
+    hidden.forEach(el=>{ el.style.visibility=''; });
+    if(onDone) onDone();
+  };
+  others.forEach(card=>{
+    pending++;
+    const el = capturedCardEl(playerIdx, card.id);
+    const to = (el && rectAnchor(el)) || panelAnchor(playerIdx);
+    if(el){ el.style.visibility='hidden'; hidden.push(el); }
+    flyCardVisual(card, floorOverlapAnchor(card,0) || floorAnchor(), to, 380, done);
+  });
+  if(drawnFlyer){
+    moveFlyerVisual(drawnFlyer, floorAnchor(), drawnTo, 380, done);
+  } else {
+    flyCardVisual(drawn, floorAnchor(), drawnTo, 380, done);
+  }
 }
 /* 손패의 보너스 카드를 원하는 턴에 낼 때 처리한다.
    - 바닥에 이미 뻑(같은 월 3장, 처리되지 않은 상태)이 있으면: 보너스 카드는 캡처되지 않고 그 뻑 더미에 함께 묶인다(총 4장).
@@ -3576,12 +3641,11 @@ function afterHandResolved(playerIdx, card, handRes, playedFlyer, playedTarget){
     logPlayResult(playerIdx, card, handRes);
     if(handRes.captured){
       handRes.captureFrom = playedTarget || floorAnchor();
-      handRes.captureCard = handRes.cards[handRes.cards.length-1];
+      handRes.captureCards = handRes.cards;
       handRes.playedFlyer = playedFlyer;
     }
   } else {
     handRes.captureFrom = playedTarget || floorAnchor();
-    handRes.captureCard = handRes.card;
     handRes.playedFlyer = playedFlyer;
   }
   if(playedFlyer && !handRes.captured && !handRes.deferred) playedFlyer.remove();
@@ -3704,26 +3768,57 @@ function flipCardInPlace(card, anchor, onDone, keepOnDone, existingFlyer){
 }
 /* 덱 맨 위 카드를 뒤집는 연출: ① 뒷면인 채로 바닥 중앙까지 떠서 이동 → ② 그 자리에서 앞면으로
    뒤집혀 내려짐. 이후 같은 월 매칭 여부에 따른 이동은 그대로 doDrawResolve가 이어서 처리한다. */
-function flipDeckCardToFloor(card, onDone){
+function flipDeckCardToFloor(card, to, onDone){
   const from = deckAnchor();
-  const to = floorRevealAnchor();
+  to = to || floorRevealAnchor();
   if(!from || !to){ if(onDone) onDone(); return; }
   flyCardVisual(null, from, to, 380, (flyer)=>{
     flipCardInPlace(card, to, onDone, true, flyer);
   }, true, true);
 }
+/* 이번 턴에 손패보다 먼저 낸 보너스 카드가 있다면(뻑에 묶이지 않은 경우) 다른 어떤 캡처보다도
+   먼저 지금 캡처를 확정하고 패널로 날려보낸다. onDone(true/false)로 실제로 캡처가 일어났는지
+   알려준다 — 호출부는 이 값을 그 턴의 capturedThisTurn 판정에 반영해야 한다(싹쓸이 등). */
+function claimPendingBonusFirst(playerIdx, onDone){
+  if(G.bonusPending && G.bonusPending.playerIdx===playerIdx){
+    const pendingBonus = G.floor.find(c=>c.id===G.bonusPending.cardId);
+    G.bonusPending = null;
+    if(pendingBonus && pendingBonus.ppeokOwner===undefined){
+      const from = floorOverlapAnchor(pendingBonus,0) || floorAnchor();
+      G.floor = G.floor.filter(c=>c.id!==pendingBonus.id);
+      G.captured[playerIdx] = G.captured[playerIdx].concat([pendingBonus]);
+      addLog(PLAYER_NAMES[playerIdx]+': 먼저 낸 보너스 카드를 획득합니다.');
+      render();
+      const el = capturedCardEl(playerIdx, pendingBonus.id);
+      const to = (el && rectAnchor(el)) || capturedPiAnchor(playerIdx);
+      if(el) el.style.visibility='hidden';
+      flyCardVisual(pendingBonus, from, to, 420, ()=>{
+        if(el) el.style.visibility='';
+        if(onDone) onDone(true);
+      });
+      return;
+    }
+  }
+  if(onDone) onDone(false);
+}
 /* 보류 중이던(덱에서 뒤집혀 바닥에 임시로 놓여있던) 보너스 카드들을 바닥에서 걷어 캡처로 확정한다.
    실제 바닥 위치를 먼저 측정해 둔 뒤 배열을 옮기고 다시 그려서, 사라지는 순간과 캡처 패널로
    날아가는 분신이 자연스럽게 이어지도록 한다(다른 카드 이동과 동일한 방식). */
-function claimRevealedBonusCards(playerIdx, revealedBonusCards){
-  if(!revealedBonusCards.length) return;
+function claimRevealedBonusCards(playerIdx, revealedBonusCards, onDone){
+  if(!revealedBonusCards.length){ if(onDone) onDone(); return; }
   const ids = new Set(revealedBonusCards.map(c=>c.id));
   const anchors = revealedBonusCards.map(c=>({card:c, from: floorOverlapAnchor(c,0) || floorAnchor()}));
   G.floor = G.floor.filter(c=>!ids.has(c.id));
   G.captured[playerIdx] = G.captured[playerIdx].concat(revealedBonusCards);
   render();
-  const to = capturedPanelAnchor(playerIdx);
-  anchors.forEach(({card,from})=>{ flyCardVisual(card, from, to, 420, null, false, false); });
+  let pending = anchors.length;
+  const done=()=>{ if(--pending<=0 && onDone) onDone(); };
+  anchors.forEach(({card,from})=>{
+    const el = capturedCardEl(playerIdx, card.id);
+    const to = (el && rectAnchor(el)) || capturedPiAnchor(playerIdx);
+    if(el) el.style.visibility='hidden';
+    flyCardVisual(card, from, to, 420, ()=>{ if(el) el.style.visibility=''; done(); }, false, false);
+  });
 }
 function doDraw(playerIdx, handCard, handRes){
   if(!G || G.roundOver) return;
@@ -3737,7 +3832,7 @@ function doDraw(playerIdx, handCard, handRes){
       return;
     }
     const drawn = G.deck.pop();
-    flipDeckCardToFloor(drawn, (drawnFlyer)=>{
+    flipDeckCardToFloor(drawn, null, (drawnFlyer)=>{
       if(!G || G.roundOver) return;
       if(drawn.isBonus){
         // 뻑이 될지 여부가 정해질 때까지는 바로 획득하지 않고 보류해둔다 — 이번 턴이 뻑으로
@@ -3750,7 +3845,18 @@ function doDraw(playerIdx, handCard, handRes){
         if(drawnFlyer) drawnFlyer.remove();
         step();
       } else {
-        doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, drawnFlyer, clearBonusFlyers);
+        // 뒤집은 패가 바닥의 어떤 패와 월이 같아(뻑 포함) 나중에 처리될지 이미 알 수 있으므로,
+        // 여기서 곧장 그 바닥패와 겹치는 위치로 옮겨 대기시켜 둔다. 실제로 패널로 보내는 건
+        // doDrawResolve가 순서(보너스 → 손패 캡처 → 뽑은 패 캡처)에 맞춰 이어서 처리한다.
+        const flipMatch = G.floor.find(c=>c.month===drawn.month);
+        const overlap = flipMatch ? floorOverlapAnchor(flipMatch, 0.3) : null;
+        if(overlap && drawnFlyer){
+          moveFlyerVisual(drawnFlyer, floorRevealAnchor(), overlap, 300, ()=>{
+            doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, drawnFlyer, clearBonusFlyers);
+          });
+        } else {
+          doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, drawnFlyer, clearBonusFlyers);
+        }
       }
     });
   };
@@ -3768,22 +3874,26 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
 
   if(handRes.deferred){
     if(!drawn){
-      if(revealedBonusCards.length){
-        claimRevealedBonusCards(playerIdx, revealedBonusCards);
-        addLog(PLAYER_NAMES[playerIdx]+': 덱이 떨어지기 전 뒤집힌 보너스 카드를 획득합니다.');
-      }
-      // 덱이 떨어지면 보류했던 캡처를 뒤늦게 확정한다
-      const res = performCapture(G, playerIdx, handRes.card, [handRes.floorCard]);
-      logPlayResult(playerIdx, handRes.card, res);
-      const finishExhaustion=()=>{
-        clearBonusFlyers();
-        if(handRes.playedFlyer) handRes.playedFlyer.remove();
-        endRoundByExhaustion(playerIdx);
+      const proceedAfterReveal = ()=>{
+        // 덱이 떨어지면 보류했던 캡처를 뒤늦게 확정한다
+        const res = performCapture(G, playerIdx, handRes.card, [handRes.floorCard]);
+        logPlayResult(playerIdx, handRes.card, res);
+        const finishExhaustion=()=>{
+          clearBonusFlyers();
+          if(handRes.playedFlyer) handRes.playedFlyer.remove();
+          endRoundByExhaustion(playerIdx);
+        };
+        if(handRes.playedFlyer){
+          handRes.playedFlyer.remove();
+          animateCaptureSweepFrom(playerIdx, res.cards, handRes.captureFrom, finishExhaustion);
+        } else finishExhaustion();
       };
-      if(handRes.playedFlyer){
-        handRes.playedFlyer.remove();
-        animateCaptureSweepFrom(playerIdx, handRes.captureCard, handRes.captureFrom, finishExhaustion);
-      } else finishExhaustion();
+      if(revealedBonusCards.length){
+        claimRevealedBonusCards(playerIdx, revealedBonusCards, ()=>{
+          addLog(PLAYER_NAMES[playerIdx]+': 덱이 떨어지기 전 뒤집힌 보너스 카드를 획득합니다.');
+          proceedAfterReveal();
+        });
+      } else proceedAfterReveal();
       return;
     }
     if(drawn.month === handRes.card.month){
@@ -3823,40 +3933,48 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
       if(drawnFlyer) drawnFlyer.remove();
       clearBonusFlyers();
       render();
-      safeTimeout(()=>resolveFlexThenAfterTurn(playerIdx, false), 550);
+      showPpeokFormedToast(playerIdx, ()=>resolveFlexThenAfterTurn(playerIdx, false));
       return;
     }
     // 뻑이 아니었으므로 보류했던 손패 캡처를 지금 확정하고, 뽑은 패는 별도로 처리
-    if(revealedBonusCards.length){
-      claimRevealedBonusCards(playerIdx, revealedBonusCards);
-      addLog(PLAYER_NAMES[playerIdx]+': 뻑이 되지 않아 뒤집혔던 보너스 카드를 획득합니다.');
-    }
-    const handCaptureRes = performCapture(G, playerIdx, handRes.card, [handRes.floorCard]);
-    logPlayResult(playerIdx, handRes.card, handCaptureRes);
-    const afterHandCapture = ()=>{
-      clearBonusFlyers();
-      render();
-      if(playerIdx===HUMAN) G.phase='resolving';
-      resolvePlayAsync(G, playerIdx, drawn, (res2)=>{
-        logPlayResult(playerIdx, drawn, res2);
-        const finish2=()=>{ render(); safeTimeout(()=>resolveFlexThenAfterTurn(playerIdx, true), 550); };
-        const afterBonus2=()=>resolvePpeokBonus(playerIdx, res2.ppeokPending, finish2);
-        if(res2.captured) animateDrawnCapture(playerIdx, drawn, res2, afterBonus2, drawnFlyer);
-        else { if(drawnFlyer) drawnFlyer.remove(); afterBonus2(); }
+    const afterReveal2 = ()=>{
+    // 덱에서 뒤집은 패가 바닥의 제 위치로 완전히 내려앉는 것까지 눈에 보이고 난 뒤에야
+    // 대기 중이던 손패 캡처를 패널로 옮기기 시작한다 — 둘이 겹쳐 보이지 않도록 순서를 분리.
+    safeTimeout(()=>{
+      if(!G || G.roundOver) return;
+      claimPendingBonusFirst(playerIdx, ()=>{
+        const handCaptureRes = performCapture(G, playerIdx, handRes.card, [handRes.floorCard]);
+        logPlayResult(playerIdx, handRes.card, handCaptureRes);
+        const afterHandCapture = ()=>{
+          clearBonusFlyers();
+          render();
+          if(playerIdx===HUMAN) G.phase='resolving';
+          resolvePlayAsync(G, playerIdx, drawn, (res2)=>{
+            logPlayResult(playerIdx, drawn, res2);
+            const finish2=()=>{ render(); safeTimeout(()=>resolveFlexThenAfterTurn(playerIdx, true), 550); };
+            const afterBonus2=()=>resolvePpeokBonus(playerIdx, res2.ppeokPending, finish2);
+            if(res2.captured) animateDrawnCapture(playerIdx, drawn, res2, afterBonus2, drawnFlyer);
+            else { if(drawnFlyer) drawnFlyer.remove(); afterBonus2(); }
+          });
+          // 바닥에 같은 월이 여럿이라 선택 대기 상태가 됐다면, 실제 바닥 카드가 이미 그려졌으므로
+          // 날아온 분신은 바로 지운다 — 같은 카드가 두 군데(분신+실제 카드) 겹쳐 보이지 않도록.
+          if(G.phase==='choosingCapture' && drawnFlyer) drawnFlyer.remove();
+        };
+        if(handRes.playedFlyer) handRes.playedFlyer.remove();
+        animateCaptureSweepFrom(playerIdx, handCaptureRes.cards, handRes.captureFrom, afterHandCapture);
       });
-      // 바닥에 같은 월이 여럿이라 선택 대기 상태가 됐다면, 실제 바닥 카드가 이미 그려졌으므로
-      // 날아온 분신은 바로 지운다 — 같은 카드가 두 군데(분신+실제 카드) 겹쳐 보이지 않도록.
-      if(G.phase==='choosingCapture' && drawnFlyer) drawnFlyer.remove();
+    }, 450);
     };
-    if(handRes.playedFlyer) handRes.playedFlyer.remove();
-    animateCaptureSweepFrom(playerIdx, handCaptureRes.cards[handCaptureRes.cards.length-1], handRes.captureFrom, afterHandCapture);
+    if(revealedBonusCards.length){
+      claimRevealedBonusCards(playerIdx, revealedBonusCards, ()=>{
+        addLog(PLAYER_NAMES[playerIdx]+': 뻑이 되지 않아 뒤집혔던 보너스 카드를 획득합니다.');
+        afterReveal2();
+      });
+    } else afterReveal2();
     return;
   }
 
-  if(revealedBonusCards.length){
-    claimRevealedBonusCards(playerIdx, revealedBonusCards);
-    addLog(PLAYER_NAMES[playerIdx]+': 뻑이 될 수 없는 상황이라 뒤집혔던 보너스 카드를 획득합니다.');
-  }
+  const proceedAfterReveal3 = ()=>{
   if(!drawn){
     G.handPending = null;
     // 덱이 다 떨어져 이번이 마지막 뽑기 시도였다면, 미뤄뒀던 둘 중 하나 고르기도 더 기다릴
@@ -3876,75 +3994,86 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
       endRoundByExhaustion(playerIdx);
     };
     if(handRes.captureFrom){
-      animateCaptureSweepFrom(playerIdx, handRes.captureCard, handRes.captureFrom, finishExhaustion);
+      animateCaptureSweepFrom(playerIdx, handRes.captureCards, handRes.captureFrom, finishExhaustion);
     } else finishExhaustion();
     return;
   }
 
-  if(playerIdx===HUMAN) G.phase='resolving';
-  resolvePlayAsync(G, playerIdx, drawn, (res)=>{
-    logPlayResult(playerIdx, drawn, res);
-    const isTtadak = !!(handCard && handRes.captured && res.captured && drawn.month===handCard.month);
-    const isJjok = !!(handCard && !handRes.captured && !handRes.pendingMatches && res.captured && drawn.month===handCard.month && hasMoreTurns(playerIdx));
-    const finish=()=>{
-      clearBonusFlyers();
-      G.handPending = null;
-      render();
-      if(handRes.playedFlyer) handRes.playedFlyer.remove();
-      if(drawnFlyer) drawnFlyer.remove();
-      const proceed = (capturedThisTurn)=>safeTimeout(()=>resolveFlexThenAfterTurn(playerIdx, capturedThisTurn), 550);
-      // 낸 손패가 바닥 두 장 중 무엇과 짝지을지 미뤄뒀었다면(방금 뽑은 패로 자동으로 다 쓸려가지
-      // 않은 이상) 이제서야 그 선택을 진행한다.
-      if(handRes.pendingMatches && G.floor.some(f=>f.id===handCard.id)){
-        resolvePendingFloorChoice(playerIdx, handCard, handRes.pendingMatches, (captured)=>{
-          proceed(captured || res.captured || revealedBonusCards.length>0);
-        });
-      } else {
-        proceed(handRes.captured||res.captured||revealedBonusCards.length>0);
-      }
-    };
-    // 뻑 완성/따닥/쪽은 같은 턴에 동시에 겹칠 수 없는 상황들이라, 캡처 스윕이 다 끝난 뒤
-    // 이 중 해당하는 것 하나만 골라 피 보상 애니메이션을 재생하고 나서 다음으로 넘어간다.
-    const afterBonus=()=>{
-      if(handRes.ppeokPending || res.ppeokPending){
-        resolvePpeokBonus(playerIdx, true, finish);
-      } else if(isTtadak){
-        const gains = ttadakGains(playerIdx);
-        if(gains.length>0){
-          addLog(PLAYER_NAMES[playerIdx]+': <b>따닥!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
-          showPiBonusToast(playerIdx, '따닥', gains, ()=>{
-            runTtadakTransfers(playerIdx, gains, finish);
+  claimPendingBonusFirst(playerIdx, (bonusPendingCaptured)=>{
+    if(playerIdx===HUMAN) G.phase='resolving';
+    resolvePlayAsync(G, playerIdx, drawn, (res)=>{
+      logPlayResult(playerIdx, drawn, res);
+      const isTtadak = !!(handCard && handRes.captured && res.captured && drawn.month===handCard.month);
+      const isJjok = !!(handCard && !handRes.captured && !handRes.pendingMatches && res.captured && drawn.month===handCard.month && hasMoreTurns(playerIdx));
+      const finish=()=>{
+        clearBonusFlyers();
+        G.handPending = null;
+        render();
+        if(handRes.playedFlyer) handRes.playedFlyer.remove();
+        if(drawnFlyer) drawnFlyer.remove();
+        const proceed = (capturedThisTurn)=>safeTimeout(()=>resolveFlexThenAfterTurn(playerIdx, capturedThisTurn||bonusPendingCaptured), 550);
+        // 낸 손패가 바닥 두 장 중 무엇과 짝지을지 미뤄뒀었다면(방금 뽑은 패로 자동으로 다 쓸려가지
+        // 않은 이상) 이제서야 그 선택을 진행한다.
+        if(handRes.pendingMatches && G.floor.some(f=>f.id===handCard.id)){
+          resolvePendingFloorChoice(playerIdx, handCard, handRes.pendingMatches, (captured)=>{
+            proceed(captured || res.captured || revealedBonusCards.length>0);
           });
         } else {
-          addLog(PLAYER_NAMES[playerIdx]+': <b>따닥!</b> (상대에게 줄 피가 없어 보너스 없음)');
-          finish();
+          proceed(handRes.captured||res.captured||revealedBonusCards.length>0);
         }
-      } else if(isJjok){
-        const gains = ttadakGains(playerIdx);
-        if(gains.length>0){
-          addLog(PLAYER_NAMES[playerIdx]+': <b>쪽!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
-          showPiBonusToast(playerIdx, '쪽', gains, ()=>{
-            runTtadakTransfers(playerIdx, gains, finish);
-          });
+      };
+      // 뻑 완성/따닥/쪽은 같은 턴에 동시에 겹칠 수 없는 상황들이라, 캡처 스윕이 다 끝난 뒤
+      // 이 중 해당하는 것 하나만 골라 피 보상 애니메이션을 재생하고 나서 다음으로 넘어간다.
+      const afterBonus=()=>{
+        if(handRes.ppeokPending || res.ppeokPending){
+          resolvePpeokBonus(playerIdx, true, finish);
+        } else if(isTtadak){
+          const gains = ttadakGains(playerIdx);
+          if(gains.length>0){
+            addLog(PLAYER_NAMES[playerIdx]+': <b>따닥!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
+            showPiBonusToast(playerIdx, '따닥', gains, ()=>{
+              runTtadakTransfers(playerIdx, gains, finish);
+            });
+          } else {
+            addLog(PLAYER_NAMES[playerIdx]+': <b>따닥!</b> (상대에게 줄 피가 없어 보너스 없음)');
+            finish();
+          }
+        } else if(isJjok){
+          const gains = ttadakGains(playerIdx);
+          if(gains.length>0){
+            addLog(PLAYER_NAMES[playerIdx]+': <b>쪽!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
+            showPiBonusToast(playerIdx, '쪽', gains, ()=>{
+              runTtadakTransfers(playerIdx, gains, finish);
+            });
+          } else {
+            addLog(PLAYER_NAMES[playerIdx]+': <b>쪽!</b> (상대에게 줄 피가 없어 보너스 없음)');
+            finish();
+          }
         } else {
-          addLog(PLAYER_NAMES[playerIdx]+': <b>쪽!</b> (상대에게 줄 피가 없어 보너스 없음)');
           finish();
         }
-      } else {
-        finish();
-      }
-    };
-    const finishHandCapture=()=>{
+      };
+      // 손패로 먹은 게 있으면 그것부터 패널로 보내고, 그 다음에 덱을 뒤집어 먹은 게 있으면 이어서 보낸다
+      // (실제 진행 순서: 보너스 먼저 → 손패 캡처 → 뽑은 패 캡처).
+      const afterHandCapture=()=>{
+        if(res.captured) animateDrawnCapture(playerIdx, drawn, res, afterBonus, drawnFlyer);
+        else { if(drawnFlyer) drawnFlyer.remove(); afterBonus(); }
+      };
       if(handRes.captureFrom){
-        animateCaptureSweepFrom(playerIdx, handRes.captureCard, handRes.captureFrom, afterBonus);
-      } else afterBonus();
-    };
-    if(res.captured) animateDrawnCapture(playerIdx, drawn, res, finishHandCapture, drawnFlyer);
-    else finishHandCapture();
+        animateCaptureSweepFrom(playerIdx, handRes.captureCards, handRes.captureFrom, afterHandCapture);
+      } else afterHandCapture();
+    });
+    // 바닥에 같은 월이 여럿이라 선택 대기 상태가 됐다면, 실제 바닥 카드가 이미 그려졌으므로
+    // 날아온 분신은 바로 지운다 — 같은 카드가 두 군데(분신+실제 카드) 겹쳐 보이지 않도록.
+    if(G.phase==='choosingCapture' && drawnFlyer) drawnFlyer.remove();
   });
-  // 바닥에 같은 월이 여럿이라 선택 대기 상태가 됐다면, 실제 바닥 카드가 이미 그려졌으므로
-  // 날아온 분신은 바로 지운다 — 같은 카드가 두 군데(분신+실제 카드) 겹쳐 보이지 않도록.
-  if(G.phase==='choosingCapture' && drawnFlyer) drawnFlyer.remove();
+  };
+  if(revealedBonusCards.length){
+    claimRevealedBonusCards(playerIdx, revealedBonusCards, ()=>{
+      addLog(PLAYER_NAMES[playerIdx]+': 뻑이 될 수 없는 상황이라 뒤집혔던 보너스 카드를 획득합니다.');
+      proceedAfterReveal3();
+    });
+  } else proceedAfterReveal3();
 }
 /* 9월 열끗처럼 획득 시점에 열끗/쌍피 중 고를 수 있는 카드를 처리한 뒤 afterTurn으로 넘어간다. */
 /* 9월 패는 아직 선택 전(flexible)에도 기본값인 쌍피로 쳐서 피 줄에 먼저 놓인다(renderCapturedGrid).
@@ -3998,6 +4127,26 @@ function afterTurn(playerIdx, capturedThisTurn){
   if(!G || G.roundOver) return;
   // 보너스 카드로 뽑은 패 표시는 그 턴에서만 보이면 되므로, 이 턴이 끝나는 시점(=여기)에 지운다.
   G.hands[playerIdx].forEach(c=>{ delete c.bonusDrawn; });
+  // 보너스 카드가 패널로 날아가는 애니메이션이 다 끝난 뒤에야 싹쓸이 판정/다음 단계로 넘어간다 —
+  // 그렇지 않으면 이 카드가 아직 날아가는 중에 다음 턴이 시작되어 버려 두 동작이 겹쳐 보인다.
+  const afterBonusClaim = (finalCapturedThisTurn)=>{
+    // 싹쓸이: 먹고 나서 바닥에 한 장도 안 남으면 보너스. 단, 손에 남은 마지막 패로 낸 경우는 제외.
+    // 실제로 피가 날아가는 애니메이션이 끝난 뒤에야(피를 받아 점수에 반영된 뒤) 다음 단계로 넘어간다.
+    if(finalCapturedThisTurn && G.floor.length===0 && hasMoreTurns(playerIdx)){
+      const proceedDecide = ()=>afterTurnDecide(playerIdx, finalCapturedThisTurn);
+      const gains = ttadakGains(playerIdx);
+      if(gains.length>0){
+        addLog(PLAYER_NAMES[playerIdx]+': <b>쓸!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
+        showPiBonusToast(playerIdx, '쓸', gains, ()=>{
+          runTtadakTransfers(playerIdx, gains, proceedDecide);
+        });
+      } else {
+        proceedDecide();
+      }
+      return;
+    }
+    afterTurnDecide(playerIdx, finalCapturedThisTurn);
+  };
   if(G.bonusPending && G.bonusPending.playerIdx===playerIdx){
     const pendingBonus = G.floor.find(c=>c.id===G.bonusPending.cardId);
     G.bonusPending = null;
@@ -4006,27 +4155,18 @@ function afterTurn(playerIdx, capturedThisTurn){
       G.floor = G.floor.filter(c=>c.id!==pendingBonus.id);
       G.captured[playerIdx] = G.captured[playerIdx].concat([pendingBonus]);
       addLog(PLAYER_NAMES[playerIdx]+': 이번 턴엔 뻑이 나지 않아 보너스 카드를 획득합니다.');
-      capturedThisTurn = true;
       render();
-      flyCardVisual(pendingBonus, from, capturedPanelAnchor(playerIdx), 420, null, false, false);
+      const el = capturedCardEl(playerIdx, pendingBonus.id);
+      const to = (el && rectAnchor(el)) || capturedPiAnchor(playerIdx);
+      if(el) el.style.visibility='hidden';
+      flyCardVisual(pendingBonus, from, to, 420, ()=>{
+        if(el) el.style.visibility='';
+        afterBonusClaim(true);
+      }, false, false);
+      return;
     }
   }
-  // 싹쓸이: 먹고 나서 바닥에 한 장도 안 남으면 보너스. 단, 손에 남은 마지막 패로 낸 경우는 제외.
-  // 실제로 피가 날아가는 애니메이션이 끝난 뒤에야(피를 받아 점수에 반영된 뒤) 다음 단계로 넘어간다.
-  if(capturedThisTurn && G.floor.length===0 && hasMoreTurns(playerIdx)){
-    const proceedDecide = ()=>afterTurnDecide(playerIdx, capturedThisTurn);
-    const gains = ttadakGains(playerIdx);
-    if(gains.length>0){
-      addLog(PLAYER_NAMES[playerIdx]+': <b>싹쓸이!</b> '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
-      showPiBonusToast(playerIdx, '싹쓸이', gains, ()=>{
-        runTtadakTransfers(playerIdx, gains, proceedDecide);
-      });
-    } else {
-      proceedDecide();
-    }
-    return;
-  }
-  afterTurnDecide(playerIdx, capturedThisTurn);
+  afterBonusClaim(capturedThisTurn);
 }
 function afterTurnDecide(playerIdx, capturedThisTurn){
   if(!G || G.roundOver) return;
