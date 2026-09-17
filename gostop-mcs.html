@@ -146,6 +146,9 @@
 
   .log-panel{width:100%; background:var(--panel-darker); border:1px solid var(--border); border-radius:10px; padding:8px 10px; margin:8px 0; font-size:11.5px; color:var(--muted); height:64px; overflow-y:auto; line-height:1.6;}
   .log-panel div:last-child{color:var(--cream);}
+  .log-panel-wrap{position:relative; width:100%;}
+  .log-copy-btn{position:absolute; top:12px; right:6px; z-index:2; background:rgba(20,15,10,.85); color:var(--muted); border:1px solid var(--border); border-radius:6px; padding:2px 8px; font-size:10.5px; cursor:pointer;}
+  .log-copy-btn:active{transform:scale(.95);}
 
   .gostop-bar{width:100%; background:linear-gradient(180deg,#2a1e0c,#1c1508); border:1px solid var(--gold); border-radius:10px; padding:10px 12px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; gap:8px;}
   .gostop-bar.bomb-hint{justify-content:center; text-align:center;}
@@ -495,7 +498,10 @@
         </div>
       </div>
 
-      <div class="log-panel" id="logPanel"></div>
+      <div class="log-panel-wrap">
+        <button type="button" class="log-copy-btn" id="logCopyBtn" onclick="uiCopyLog()">복사</button>
+        <div class="log-panel" id="logPanel"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -3565,6 +3571,9 @@ function startRound(){
   G.scoreHighlight = null;
   G.turn=G.dealer; G.log=[]; G.phase='idle'; G.roundOver=false;
   document.getElementById('roundNum').textContent=G.round;
+  // 나중에 "이 카드가 정말 내 손에 있었나?" 하고 로그로 되짚어볼 수 있도록, 이번 라운드
+  // 시작 손패 7장을 로그 맨 위에 그대로 남긴다(상대 손패는 원래 안 보이는 정보라 남기지 않는다).
+  addLog('나: 시작 손패 — '+sortByMonth(G.hands[HUMAN]).map(c=>labelOf(c)).join(', '));
   // 방금 나눠준 손패 7장·바닥 6장을 보너스/총통/4장 특수 처리 전 그대로 먼저 보여준다 —
   // 컴퓨터가 곧바로 진행해버려 초기 배분을 놓치는 일이 없도록 안내 배너로 잠깐 텀을 준다.
   render();
@@ -3672,6 +3681,35 @@ function addLog(msg){
   if(panel){
     panel.innerHTML = G.log.map(m=>'<div>'+m+'</div>').join('');
     panel.scrollTop = panel.scrollHeight;
+  }
+}
+/* 로그 패널의 줄 하나하나가 <b>뻑!</b>처럼 태그를 포함할 수 있어, innerHTML을 그대로
+   복사하면 마크업까지 섞여 나온다. innerText를 읽으면 브라우저가 태그를 걷어내고 줄바꿈만
+   남긴 순수 텍스트를 그대로 얻을 수 있다. */
+function uiCopyLog(){
+  const panel = document.getElementById('logPanel');
+  const btn = document.getElementById('logCopyBtn');
+  if(!panel || !panel.innerText) return;
+  const text = panel.innerText;
+  const showCopied = ()=>{
+    if(!btn) return;
+    btn.textContent = '복사됨';
+    setTimeout(()=>{ btn.textContent = '복사'; }, 1200);
+  };
+  const fallbackCopy = ()=>{
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position='fixed'; ta.style.left='-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta);
+    showCopied();
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(showCopied).catch(fallbackCopy);
+  } else {
+    fallbackCopy();
   }
 }
 /* 피 보상 알림(뻑완성/따닥/쪽/폭탄/싹쓸이)과 "고!" 알림은 화면의 같은 자리에 뜨는 배너라,
@@ -3820,13 +3858,19 @@ function showChongtongToast(playerIdx, month, cards, onDone){
     if(toast) toast.classList.remove('show');
   }, 2600, onDone);
 }
-function logPlayResult(playerIdx, card, res){
+/* isDrawn: 손패로 낸 카드인지(false, "냄") 덱에서 뒤집은 카드인지(true, "뽑음") — 이 표시가
+   없으면 두 경우가 로그에서 똑같이 보여 진행 과정을 따라가기 어렵다. 캡처된 경우, 함께
+   가져간 바닥 카드(짝)도 라벨로 보여준다. */
+function logPlayResult(playerIdx, card, res, isDrawn){
   const who=PLAYER_NAMES[playerIdx];
   const label=labelOf(card);
+  const verb = isDrawn ? '뽑음' : '냄';
   if(res.captured){
-    addLog(who+': '+label+' → '+res.cards.length+'장 획득'+(res.ttadak?' (같은 월 여러 장 동시 획득!)':''));
+    const partners = res.cards.filter(c=>c.id!==card.id).map(c=>labelOf(c));
+    const partnerText = partners.length ? '['+partners.join(', ')+'] ' : '';
+    addLog(who+': '+label+' '+verb+' → '+partnerText+res.cards.length+'장 획득'+(res.ttadak?' (같은 월 여러 장 동시 획득!)':''));
   } else {
-    addLog(who+': '+label+' 바닥에 놓음');
+    addLog(who+': '+label+' '+verb+' → 바닥에 놓음');
   }
 }
 /* 뻑을 완성해 피를 받는 경우, 그 실제 이동 애니메이션이 끝난 뒤에 onDone을 부른다.
@@ -4665,7 +4709,7 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
           render();
           if(playerIdx===HUMAN) G.phase='resolving';
           resolvePlayAsync(G, playerIdx, drawn, (res2)=>{
-            logPlayResult(playerIdx, drawn, res2);
+            logPlayResult(playerIdx, drawn, res2, true);
             const finish2=()=>{ render(); safeTimeout(()=>resolveFlexThenAfterTurn(playerIdx, true), 550); };
             const afterBonus2=()=>resolvePpeokBonus(playerIdx, res2.ppeokPending, finish2);
             if(res2.captured) animateDrawnCapture(playerIdx, drawn, res2, afterBonus2, drawnFlyer);
@@ -4717,7 +4761,7 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
   claimPendingBonusFirst(playerIdx, (bonusPendingCaptured)=>{
     if(playerIdx===HUMAN) G.phase='resolving';
     resolvePlayAsync(G, playerIdx, drawn, (res)=>{
-      logPlayResult(playerIdx, drawn, res);
+      logPlayResult(playerIdx, drawn, res, true);
       const isTtadak = !!(handCard && handRes.captured && res.captured && drawn.month===handCard.month);
       const isJjok = !!(handCard && !handRes.captured && !handRes.pendingMatches && res.captured && drawn.month===handCard.month && hasMoreTurns(playerIdx));
       const finish=()=>{
