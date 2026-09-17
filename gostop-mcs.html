@@ -2611,7 +2611,7 @@ function aiDecideGoStop(score, deckRemaining, playerIdx){
 let G = null;
 
 /* =========================================================
-   AI 판단 — 몬테카를로 롤아웃 엔진(MCTS, gostop-mcts.html 전용)
+   AI 판단 — 몬테카를로 롤아웃 엔진(MCS, gostop-mcs.html 전용)
    =========================================================
    기존 gostop.html은 "사람이 상황을 발견할 때마다 우선순위 규칙을 추가"하는 방식이었다.
    여기서는 대신, 판단이 필요한 순간마다 안 보이는 정보(상대 손패 구성·덱 순서)를 공개 정보와
@@ -2692,26 +2692,26 @@ function cloneSimWorld(src){
    addLog)를 시뮬레이션용 상태로 바꿔치기했다가 끝나면 반드시 되돌린다 — 실제 게임 상태와
    화면은 전혀 건드리지 않는다. */
 function withSimG(simG, fn){
-  const realG = G, realAddLog = addLog, realStatSeat = statSeatMcts;
+  const realG = G, realAddLog = addLog, realStatSeat = statSeatMcs;
   G = simG;
   addLog = function(){};
-  statSeatMcts = -1; // 롤아웃 내부는 항상 빠른 휴리스틱만 쓴다(재귀적으로 MCTS가 MCTS를 부르면 계산량 폭발)
+  statSeatMcs = -1; // 롤아웃 내부는 항상 빠른 휴리스틱만 쓴다(재귀적으로 MCS가 MCS를 부르면 계산량 폭발)
   try { return fn(); }
-  finally { G = realG; addLog = realAddLog; statSeatMcts = realStatSeat; }
+  finally { G = realG; addLog = realAddLog; statSeatMcs = realStatSeat; }
 }
 /* 통계 검증(자기대국)용 훅: 이 값이 특정 플레이어 인덱스면, 그 좌석의 "실제" 판단(롤아웃이
-   아니라 진짜 게임 진행)마다 매번 진짜 mctsChoose를 쓴다 — 기존 휴리스틱 2석 vs MCTS 1석으로
+   아니라 진짜 게임 진행)마다 매번 진짜 mcsChoose를 쓴다 — 기존 휴리스틱 2석 vs MCS 1석으로
    평균 코인 증감을 비교하는 자기대국 하네스에서 쓴다. 기본값 -1(아무도 해당 안 됨)이면
    전부 기존 휴리스틱대로 진행되어 기존 동작과 동일하다. */
-let statSeatMcts = -1;
-/* 위 훅을 판단 종류별로 더 세밀하게 켜고 끌 수 있는 집합 — 비워두면(기본) statSeatMcts가
-   해당하는 좌석은 4종 전부 MCTS를 쓰고, 채워두면 그 좌석이라도 이 집합에 있는 종류만
-   MCTS를 쓴다(나머지는 기존 휴리스틱) — 어느 판단 종류가 문제인지 하나씩 분리 검증할 때 쓴다. */
-let statSeatMctsKinds = null;
-function statSeatUsesMcts(playerIdx, kind){
-  if(playerIdx!==statSeatMcts) return false;
-  if(!statSeatMctsKinds) return true;
-  return statSeatMctsKinds.has(kind);
+let statSeatMcs = -1;
+/* 위 훅을 판단 종류별로 더 세밀하게 켜고 끌 수 있는 집합 — 비워두면(기본) statSeatMcs가
+   해당하는 좌석은 4종 전부 MCS를 쓰고, 채워두면 그 좌석이라도 이 집합에 있는 종류만
+   MCS를 쓴다(나머지는 기존 휴리스틱) — 어느 판단 종류가 문제인지 하나씩 분리 검증할 때 쓴다. */
+let statSeatMcsKinds = null;
+function statSeatUsesMcs(playerIdx, kind){
+  if(playerIdx!==statSeatMcs) return false;
+  if(!statSeatMcsKinds) return true;
+  return statSeatMcsKinds.has(kind);
 }
 
 function allCapturedHeadless(){ return G.captured[0].concat(G.captured[1], G.captured[2]); }
@@ -2730,7 +2730,7 @@ function giveTtadakPiHeadless(playerIdx, gains){
 function pickFloorChoiceHeadless(matches, playerIdx, override){
   const oc = overrideChoice(override, playerIdx, 'floorChoice', ()=>matches, ()=>matches[0]);
   if(oc!==undefined) return oc;
-  if(statSeatUsesMcts(playerIdx, 'floorChoice')) return chooseFloorChoice(playerIdx, matches);
+  if(statSeatUsesMcs(playerIdx, 'floorChoice')) return chooseFloorChoice(playerIdx, matches);
   return aiPickCaptureTarget(matches, playerIdx);
 }
 function resolveDrawnCardHeadless(playerIdx, card, override){
@@ -2886,24 +2886,24 @@ function playChosenCardHeadless(playerIdx, card, override){
   return finishDrawStepHeadless(playerIdx, card, handRes, override);
 }
 /* turnAction·floorChoice·bombSkipAction(고/스톱 제외) 전부, 손패가 많이 남은 라운드
-   초반(6장 이상)은 아직 변수가 너무 많고 상대 위협도 구체화 전이라 MCTS가 깊이 봐도
+   초반(6장 이상)은 아직 변수가 너무 많고 상대 위협도 구체화 전이라 MCS가 깊이 봐도
    이득이 작을 가능성이 높은 반면, 후반(5장 이하)은 이번 세션에서 검증한 통찰(광박·피박
-   이중위험, 폭탄 미루기 리스크)도 전부 이 구간의 상황이었다. 그래서 초반은 MCTS를 아예
+   이중위험, 폭탄 미루기 리스크)도 전부 이 구간의 상황이었다. 그래서 초반은 MCS를 아예
    건너뛰고 기존 휴리스틱을 쓰고, 그렇게 아낀 지연 예산을 후반에는 더 깊은 lookahead로
    재투자한다 — 판단 종류와 무관하게 같은 손패 크기 기준을 공유한다. */
-let MCTS_TURNACTION_HAND_THRESHOLD = 5;
-let MCTS_TURNACTION_DEEP_LOOKAHEAD = 3;
-function mctsLookaheadForHand(playerIdx){
-  return G.hands[playerIdx].length <= MCTS_TURNACTION_HAND_THRESHOLD ? MCTS_TURNACTION_DEEP_LOOKAHEAD : -1;
+let MCS_TURNACTION_HAND_THRESHOLD = 5;
+let MCS_TURNACTION_DEEP_LOOKAHEAD = 3;
+function mcsLookaheadForHand(playerIdx){
+  return G.hands[playerIdx].length <= MCS_TURNACTION_HAND_THRESHOLD ? MCS_TURNACTION_DEEP_LOOKAHEAD : -1;
 }
-/* turnAction 후보 하나를 정책대로 고른다 — 손패 크기에 따라 MCTS를 쓸지 기존 휴리스틱을
-   쓸지는 mctsLookaheadForHand가 정한다. 헤드리스 통계 검증과 실전 UI 호출부가 모두
+/* turnAction 후보 하나를 정책대로 고른다 — 손패 크기에 따라 MCS를 쓸지 기존 휴리스틱을
+   쓸지는 mcsLookaheadForHand가 정한다. 헤드리스 통계 검증과 실전 UI 호출부가 모두
    이 함수를 공유해 두 곳의 판단 로직이 갈라지지 않게 한다. */
 function chooseTurnAction(playerIdx){
-  const lookahead = mctsLookaheadForHand(playerIdx);
+  const lookahead = mcsLookaheadForHand(playerIdx);
   if(lookahead>=0){
     const candidates = buildTurnActionCandidates(playerIdx);
-    return mctsChoose(playerIdx, 'turnAction', candidates, candidates[0], lookahead);
+    return mcsChoose(playerIdx, 'turnAction', candidates, candidates[0], lookahead);
   }
   const bombs = checkBombCandidates(playerIdx);
   if(bombs.length){
@@ -2917,15 +2917,15 @@ function chooseTurnAction(playerIdx){
 }
 /* floorChoice(바닥 2장 중 선택) — turnAction과 동일한 손패 크기 기준을 쓴다. */
 function chooseFloorChoice(playerIdx, matches){
-  const lookahead = mctsLookaheadForHand(playerIdx);
-  if(lookahead>=0) return mctsChoose(playerIdx, 'floorChoice', matches, matches[0], lookahead);
+  const lookahead = mcsLookaheadForHand(playerIdx);
+  if(lookahead>=0) return mcsChoose(playerIdx, 'floorChoice', matches, matches[0], lookahead);
   return aiPickCaptureTarget(matches, playerIdx);
 }
 /* bombSkipAction(폭탄 후 기회를 쓸지 젖힐지) — turnAction과 동일한 손패 크기 기준을 쓴다. */
 function chooseBombSkipAction(playerIdx){
-  const lookahead = mctsLookaheadForHand(playerIdx);
+  const lookahead = mcsLookaheadForHand(playerIdx);
   if(lookahead>=0){
-    const choice = mctsChoose(playerIdx, 'bombSkipAction', [{type:'useTurn'},{type:'skip'}], {type:'skip'}, lookahead);
+    const choice = mcsChoose(playerIdx, 'bombSkipAction', [{type:'useTurn'},{type:'skip'}], {type:'skip'}, lookahead);
     return choice.type==='useTurn';
   }
   return G.hands[playerIdx].some(c=>G.floor.some(f=>f.month===c.month));
@@ -2939,7 +2939,7 @@ function runNormalTurnHeadless(playerIdx, override){
     ()=>buildTurnActionCandidates(playerIdx), cands=>cands[0]);
   if(oc!==undefined){
     action = oc;
-  } else if(statSeatUsesMcts(playerIdx, 'turnAction')){
+  } else if(statSeatUsesMcs(playerIdx, 'turnAction')){
     action = chooseTurnAction(playerIdx);
     if(!action) return {capturedThisTurn:false};
   } else {
@@ -2976,7 +2976,7 @@ function runBombSkipHeadless(playerIdx, override){
   const oc = overrideChoice(override, playerIdx, 'bombSkipAction', ()=>bombSkipCands, ()=>({type:'skip'}));
   if(oc!==undefined){
     useTurn = oc.type==='useTurn';
-  } else if(statSeatUsesMcts(playerIdx, 'bombSkipAction')){
+  } else if(statSeatUsesMcs(playerIdx, 'bombSkipAction')){
     useTurn = chooseBombSkipAction(playerIdx);
   } else {
     useTurn = hand.some(c=>G.floor.some(f=>f.month===c.month));
@@ -3080,8 +3080,8 @@ function continueRoundHeadless(override){
       let decision;
       if(override && !override.used && override.kind==='goStop' && override.playerIdx===playerIdx){
         decision = override.value; override.used = true;
-      } else if(statSeatUsesMcts(playerIdx, 'goStop')){
-        decision = mctsChoose(playerIdx, 'goStop', ['go','stop'], 'stop', MCTS_TURNACTION_DEEP_LOOKAHEAD);
+      } else if(statSeatUsesMcs(playerIdx, 'goStop')){
+        decision = mcsChoose(playerIdx, 'goStop', ['go','stop'], 'stop', MCS_TURNACTION_DEEP_LOOKAHEAD);
       } else {
         decision = aiDecideGoStop(score, G.deck.length, playerIdx);
       }
@@ -3094,36 +3094,36 @@ function continueRoundHeadless(override){
   }
 }
 /* 판단당 공유하는 결정화 표본 수. 후보 전부가 같은 표본들을 쓰므로(공통 난수) 비교 분산이
-   줄어든다. 판단 하나에 최대 (후보 수 × MCTS_ROLLOUTS)번의 라운드 이어하기가 도니, 느리면
+   줄어든다. 판단 하나에 최대 (후보 수 × MCS_ROLLOUTS)번의 라운드 이어하기가 도니, 느리면
    이 값부터 낮춘다.
    최종 채택값: K=100. turnAction 후보를 휴리스틱 상위2+폭탄으로 추린 뒤(buildTurnActionCandidates
    참고) K=50/100/200과 후보 수 2/3을 N=300 공통난수 자기대국으로 비교한 결과, K=100·후보2개가
    가장 좋았다(mean=-0.49, z=-0.93, 유의미한 차이 없음 — K=50은 z=-1.72, K=200은 z=-1.29로
    오히려 더 나빴고, 후보3개는 K=50에서도 z=-2.25로 유의미하게 나빠지면서 지연만 3배 늘었다). */
-let MCTS_ROLLOUTS = 100;
+let MCS_ROLLOUTS = 100;
 /* 고/스톱은 "스톱"(즉시 확정, 분산 거의 0)과 "고"(이후 여러 턴의 무작위 결과에 좌우, 분산 큼)의
    분산 차이가 커서, 다른 판단과 같은 표본 수로는 평가가 유독 불안정하다(통계 검증으로 확인됨).
    빈도가 낮은 판단이라 표본을 늘려도 전체 지연에는 거의 영향이 없으므로 이것만 따로 늘린다. */
-let MCTS_ROLLOUTS_GOSTOP = 100;
+let MCS_ROLLOUTS_GOSTOP = 100;
 /* 중첩(lookahead) 탐색 전용 표본 수. 바깥 탐색과 같은 K를 그대로 쓰면 계산량이 (바깥 K×후보수)
    배로 곱해져(바깥 롤아웃마다 안쪽에서 또 K개 세계선을 새로 만듦) 순식간에 감당 못 할 수준이
    된다 — 중첩 단계는 훨씬 작은 표본으로 "대략 맞는 방향"만 잡아도 충분하다는 전제로 작게 둔다. */
-let MCTS_LOOKAHEAD_K = 6;
+let MCS_LOOKAHEAD_K = 6;
 /* playerIdx의 지금 이 판단(kind)에서, candidates 중 라운드 끝 코인 증감 평균이 가장 큰
    것을 고른다. fallback은 안전망(비정상 상태 등)일 때만 쓰인다.
    lookaheadTurns(기본 0): 이번 판단을 강제한 뒤에도, 같은 좌석이 롤아웃 안에서 맞이하는
    이후 판단들을 곧장 휴리스틱으로 되돌리지 않고 몇 번 더(kind 무관, 단 goStop 제외 —
-   goStop은 이미 검증으로 MCTS보다 기존 휴리스틱이 낫다고 확인됨) 중첩된 mctsChoose로
-   계속 MCTS 품질로 고르게 한다 — "이번 수만"이 아니라 "이번 수+다음 몇 판단"을 MCTS로
+   goStop은 이미 검증으로 MCS보다 기존 휴리스틱이 낫다고 확인됨) 중첩된 mcsChoose로
+   계속 MCS 품질로 고르게 한다 — "이번 수만"이 아니라 "이번 수+다음 몇 판단"을 MCS로
    플레이했을 때 통계가 달라지는지 검증하기 위한 확장이다. 중첩 탐색 자체는 lookahead를
    다시 물려주지 않는다(계산량 폭발 방지 — 딱 한 단계 더 볼 뿐, 무한히 재귀하지 않는다).
-   kOverride를 주면 표본 수를 강제한다(중첩 탐색이 MCTS_LOOKAHEAD_K를 쓰기 위함). */
-function mctsChoose(playerIdx, kind, candidates, fallback, lookaheadTurns, kOverride){
+   kOverride를 주면 표본 수를 강제한다(중첩 탐색이 MCS_LOOKAHEAD_K를 쓰기 위함). */
+function mcsChoose(playerIdx, kind, candidates, fallback, lookaheadTurns, kOverride){
   if(!candidates || candidates.length===0) return fallback;
   if(candidates.length===1) return candidates[0];
   if(!G) return fallback;
   const realG = G;
-  const K = kOverride || (kind==='goStop' ? MCTS_ROLLOUTS_GOSTOP : MCTS_ROLLOUTS);
+  const K = kOverride || (kind==='goStop' ? MCS_ROLLOUTS_GOSTOP : MCS_ROLLOUTS);
   const worlds = [];
   for(let k=0;k<K;k++) worlds.push(determinizeWorld(realG, playerIdx));
   const startCoins = realG.coins[playerIdx];
@@ -3142,9 +3142,9 @@ function mctsChoose(playerIdx, kind, candidates, fallback, lookaheadTurns, kOver
   return best;
 }
 /* 오버라이드가 이 (playerIdx,kind) 판단이면 강제해 한 번 소모한다. 이미 소모된 뒤라도
-   override.lookaheadLeft가 남아있으면(mctsChoose가 lookaheadTurns로 넘겨준 값), 곧장
-   기존 휴리스틱으로 넘기지 않고 그 자리에서 작은 중첩 탐색으로 이 판단도 MCTS로 고른다.
-   해당 없으면 undefined를 돌려줘 호출부가 기존 방식(statSeatUsesMcts 또는 휴리스틱)을
+   override.lookaheadLeft가 남아있으면(mcsChoose가 lookaheadTurns로 넘겨준 값), 곧장
+   기존 휴리스틱으로 넘기지 않고 그 자리에서 작은 중첩 탐색으로 이 판단도 MCS로 고른다.
+   해당 없으면 undefined를 돌려줘 호출부가 기존 방식(statSeatUsesMcs 또는 휴리스틱)을
    쓰게 한다. getCandidates/getFallback은 지연 평가용 함수라, override가 이 좌석과
    무관한 압도적으로 흔한 경우에는 후보 목록조차 만들지 않는다. */
 function overrideChoice(override, playerIdx, kind, getCandidates, getFallback){
@@ -3155,25 +3155,25 @@ function overrideChoice(override, playerIdx, kind, getCandidates, getFallback){
   if(override && override.used && override.playerIdx===playerIdx && override.lookaheadLeft>0){
     override.lookaheadLeft--;
     const candidates = getCandidates();
-    return mctsChoose(playerIdx, kind, candidates, getFallback(candidates), 0, MCTS_LOOKAHEAD_K);
+    return mcsChoose(playerIdx, kind, candidates, getFallback(candidates), 0, MCS_LOOKAHEAD_K);
   }
   return undefined;
 }
-/* 손패 전체를 MCTS 후보로 다 비교하면 손패 수만큼 (후보 수 × K)가 그대로 곱해져 지연이
+/* 손패 전체를 MCS 후보로 다 비교하면 손패 수만큼 (후보 수 × K)가 그대로 곱해져 지연이
    커진다. 대신 기존 휴리스틱(aiChooseHandCard)으로 가장 유력한 카드 상위 몇 개만 추려서
-   그 안에서만 MCTS가 고르게 한다(폭탄 후보가 있으면 그것도 별도로 추가) — excludeMonths로
+   그 안에서만 MCS가 고르게 한다(폭탄 후보가 있으면 그것도 별도로 추가) — excludeMonths로
    이미 뽑힌 월들을 뺀 채 반복해서 물어보는 식으로 기존 함수를 그대로 재사용한다(폭탄의
    대안 카드를 찾을 때와 같은 방식). 최선의 수가 휴리스틱 상위권 밖에 있는 드문 경우는
-   MCTS가 볼 기회를 잃는다는 트레이드오프가 있지만, 지연을 크게 줄이기 위한 선택이다 —
+   MCS가 볼 기회를 잃는다는 트레이드오프가 있지만, 지연을 크게 줄이기 위한 선택이다 —
    통계 검증으로 실제 손해가 없는지 확인 후 채택했다. 후보 3개도 시도해봤으나(K=50 기준
    지연 3배·z=-2.25로 오히려 나빠짐) 2개가 최적이었다. */
-let MCTS_TURNACTION_CANDIDATE_COUNT = 2;
+let MCS_TURNACTION_CANDIDATE_COUNT = 2;
 function buildTurnActionCandidates(playerIdx){
   const hand = G.hands[playerIdx];
   const allCaptured = allCapturedHeadless();
   const candidates = [];
   const excluded = new Set();
-  for(let i=0;i<MCTS_TURNACTION_CANDIDATE_COUNT;i++){
+  for(let i=0;i<MCS_TURNACTION_CANDIDATE_COUNT;i++){
     const pick = aiChooseHandCard(hand, G.floor, allCaptured, playerIdx, excluded);
     if(!pick) break;
     candidates.push({type:'card', card:pick});
@@ -3417,11 +3417,11 @@ function performAutoPlayAction(){
     }
     case 'goStopChoice': {
       // 고/스톱만 예외적으로 기존 휴리스틱을 그대로 쓴다 — 손패 크기 게이팅·lookahead=3·
-      // K=50까지 개선한 뒤 재검증해도 고/스톱만 MCTS로 바꾸면 오히려 나빠졌다(3종만 MCTS일
+      // K=50까지 개선한 뒤 재검증해도 고/스톱만 MCS로 바꾸면 오히려 나빠졌다(3종만 MCS일
       // 때 mean=-1.01,z=-1.45 → 고/스톱까지 포함하면 mean=-1.75,z=-2.63, N=300 CRN 비교).
       // "스톱=즉시 확정, 고=이후 여러 턴 무작위 결과"로 분산 구조가 이질적이라 지금 방식
       // (결정화+1회 시뮬레이션 평균)과 잘 안 맞는 것으로 보인다. 원인 확정은 아니라 일단
-      // 검증된 기존 판단을 유지한다(gostop.md 미기록, mcts 전용 이슈).
+      // 검증된 기존 판단을 유지한다(gostop.md 미기록, mcs 전용 이슈).
       const decision = aiDecideGoStop(G.pendingScore, G.deck.length, HUMAN);
       if(decision==='go') onHumanGo(); else onHumanStop();
       break;
