@@ -107,10 +107,15 @@
   .deck-count{font-size:11px; color:var(--muted); font-weight:700;}
   /* 덱을 카드 여러 장이 쌓인 것처럼 입체적으로 보이도록, 남은 장수에 따라 뒤로 살짝씩
      어긋난 겹침 레이어를 몇 장 더 그려 두께감을 준다. */
-  .deck-stack{position:relative; width:40px; height:62px;}
-  .deck-stack .card{position:absolute; top:0; left:0; margin:0;}
+  /* 덱(뒷면)·바닥패·손패 카드가 전부 같은 크기(--card-w)를 쓴다. 이 값은 손패가 한 줄에
+     4장 들어가는 기준으로 계산되고(applyHandCardSize), 바닥패/덱도 그 값을 그대로
+     따른다 — 바닥패 자체의 폭(7장 기준)으로 따로 계산하면 손패보다 커져서 서로 다른
+     크기로 보이기 때문에, 항상 손패 쪽 계산이 기준이 된다. */
+  .deck-stack{position:relative; width:var(--card-w, 40px); height:var(--card-h, 62px);}
+  .deck-stack .card{position:absolute; top:0; left:0; margin:0; width:var(--card-w, 40px); height:var(--card-h, 62px);}
   .deck-stack .card.deck-empty{background:transparent; border:2px dashed var(--border); box-shadow:none;}
-  .floor-cards{flex:1; display:flex; flex-wrap:wrap; gap:5px; align-content:flex-start;}
+  .floor-cards{flex:1; display:flex; flex-wrap:wrap; gap:6px; align-content:flex-start;}
+  .floor-cards .card{width:var(--card-w, 40px); height:var(--card-h, 62px);}
 
   .card{width:40px;height:62px;border-radius:7px; background:#fdfbf5; border:2px solid #e8102e; display:flex; align-items:center; justify-content:center; position:relative; box-shadow:0 2px 3px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.5); flex-shrink:0; overflow:hidden;}
   .card svg{width:100%; height:100%; display:block;}
@@ -168,13 +173,44 @@
   .human-score-left{display:flex; align-items:center; gap:5px; flex-wrap:wrap; min-width:0; flex:1 1 auto;}
   #humanLabel{font-weight:700; color:var(--cream); font-size:13px;}
   .human-score b{color:var(--gold); font-weight:700; font-size:13px;}
-  .hand-row{display:flex; gap:4px; overflow-x:auto; padding:4px 2px 8px; justify-content:center; flex-wrap:wrap;}
+  /* 사람 패널을 좌(먹은 패, 컴1/컴2와 같은 방식)/우(손패, 2줄) 두 칸으로 나눠서, 라운드가
+     진행돼 먹은 패 줄이 늘어나도 세로로 한없이 길어지지 않게 한다. */
+  .human-body{display:flex; gap:8px; align-items:flex-start;}
+  .human-body .human-cap{flex:1 1 0; min-width:0;}
+  .hand-area{flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:4px; padding:4px 2px 8px;}
+  .hand-row{display:flex; gap:4px; justify-content:center; flex-wrap:wrap;}
+  .hand-row .card{width:var(--card-w, 40px); height:var(--card-h, 62px);}
 
   .cap-row{display:flex; gap:5px; align-items:flex-start; margin-bottom:3px;}
   .cap-label{flex-shrink:0; width:28px; font-size:9.5px; font-weight:700; color:var(--muted); padding-top:5px;}
+  #humanCap .cap-label{width:26px;}
+  /* 사람 패널의 먹은 패는 컴1/컴2와 완전히 같은 변수(--opp-card-w)를 그대로 쓴다 —
+     크기 계산 로직도 결과 크기도 동일해야 한다. 라운드 종료 팝업(overlayScoreCards)도
+     "실제로 점수가 난 그 배치 그대로" 보여줘야 하므로 같은 크기·라벨 폭을 쓴다. */
+  #humanCap .card.mini, #overlayScoreCards .card.mini{width:var(--opp-card-w, 21px); height:var(--opp-card-h, 32px);}
+  #overlayScoreCards .cap-label{width:26px;}
+  #overlayScoreCards .cap-cards{gap:1px;}
   .cap-cards{display:flex; flex-wrap:wrap; gap:2px;}
+  /* maxPerLine으로 한 카테고리 안에 cap-cards가 여러 줄로 나뉠 때, 이 줄들을 감싸서
+     세로로 쌓이게 한다 — 부모인 cap-row가 가로 배치(flex row)라, 이 래퍼 없이 여러
+     cap-cards를 바로 넣으면 세로로 쌓이지 않고 가로로 나란히 놓여 그 사이 간격이
+     빈 카드처럼 보이는 문제가 있었다. */
+  .cap-lines{display:flex; flex-direction:column; gap:2px;}
   .cap-empty{font-size:10px; color:var(--muted); font-style:italic; padding:2px 0;}
   .opp-cap{margin-top:2px;}
+  /* 컴1/컴2 패널은 폭이 좁아 기본 mini 카드(26px)로는 한 줄에 4장만 들어간다. 기기마다
+     실제 CSS 뷰포트 폭이 달라(같은 "갤럭시 S26" 계열이라도 모델별로 다름) 고정 px 값으로는
+     계속 어긋났다. 대신 실제 패널 폭을 JS(applyOppCardSize)로 재서 한 줄에 정확히 5장이
+     들어가는 최대 크기를 계산해 이 변수에 넣는다. 기본값(21px)은 JS가 아직 못 돈 순간
+     (레이아웃 전)의 안전한 폴백일 뿐이다. 사람 패널(#humanCap)도 같은 방식이지만 폭이
+     달라 따로 계산한 변수(--human-cap-card-w, 187줄)를 쓴다. */
+  .opp-cap .card.mini{width:var(--opp-card-w, 21px); height:var(--opp-card-h, 32px);}
+  /* 라벨 칸(28px)을 너무 줄이면 "열끗 2"/"피 12"처럼 흔한 라벨이 폭에 안 맞아 두 줄로
+     쪼개져 보인다("열끗"/"2"가 따로 줄바꿈). 라벨이 한 줄로 나오는 최소 폭(26px)은
+     유지한다 — applyOppCardSize도 이 값을 그대로 계산에 쓴다. */
+  .opp-cap .cap-label{width:26px;}
+  .opp-cap .cap-cards{gap:1px;}
+  #humanCap .cap-cards{gap:1px;}
   .human-cap{background:var(--panel); border:1px solid var(--border); border-radius:9px; padding:7px 8px; margin-bottom:8px;}
 
   #overlay{display:none; position:fixed; inset:0; background:#06120c; align-items:center; justify-content:center; z-index:1000; padding:20px;}
@@ -437,9 +473,11 @@
 
         <div class="col-human">
           <div class="human-panel" id="humanPanel">
-            <div class="human-score"><span class="human-score-left"><span id="humanLabel">나의 점수</span><b id="humanScoreVal">0점</b><span id="myShakeBadge"></span><span id="humanDetail" style="color:var(--muted);"></span></span><span id="autoPlayBadge" style="display:none; margin-left:auto; flex-shrink:0; background:rgba(0,0,0,.5); color:var(--gold); border-radius:8px; padding:2px 8px; font-size:12px; font-weight:700;"></span></div>
-            <div class="human-cap" id="humanCap"></div>
-            <div class="hand-row" id="handRow"></div>
+            <div class="human-score"><span class="human-score-left"><span id="humanLabel">나의 점수</span><b id="humanScoreVal">0점</b><span id="myShakeBadge"></span><span id="humanDetail" style="color:var(--muted);"></span></span><span class="human-score-right" style="display:flex; align-items:center; gap:6px; margin-left:auto; flex-shrink:0;"><span id="autoPlayBadge" style="display:none; background:rgba(0,0,0,.5); color:var(--gold); border-radius:8px; padding:2px 8px; font-size:12px; font-weight:700;"></span><span id="humanHandCount" style="font-weight:400; color:var(--muted); font-size:11px;"></span></span></div>
+            <div class="human-body">
+              <div class="human-cap" id="humanCap"></div>
+              <div class="hand-area" id="handRow"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -1856,10 +1894,20 @@ function resolvePendingFloorChoice(playerIdx, card, matches, onDone){
 /* 다른 사람의 먹은 패 중 피(일반 피 우선, 없으면 쌍피)를 한 장 찾아, 그 카드가 실제로 놓여있던
    자리에서 받는 사람의 먹은 패 패널로 날아가는 애니메이션과 함께 넘긴다. 애니메이션이 끝나야
    onDone이 불린다 — 호출부는 이 완료 시점 이후에 다음 진행을 이어가야 한다. */
+/* 배열 뒤에서부터(=가장 최근에 획득한 것부터) 해당 타입을 찾는다 — 피 보상은 오래
+   전에 먹은 피가 아니라 방금 먹은 피부터 내주는 게 자연스럽다(상대적으로 "덜 아까운"
+   최신 획득분을 먼저 내주는 셈). */
+function lastIndexOfType(arr, type){
+  for(let i=arr.length-1;i>=0;i--){ if(arr[i].type===type) return i; }
+  return -1;
+}
 function transferPiAnimated(fromIdx, toIdx, onDone){
   const arr=G.captured[fromIdx];
-  let idx=arr.findIndex(c=>c.type==='pi');
-  if(idx===-1) idx=arr.findIndex(c=>c.type==='ssangpi'); // 일반 피가 없으면 쌍피로 대신 지급
+  // 가장 최근 것부터 거꾸로 일반피를 찾는다 — 가장 최근 획득이 쌍피라면 그건 건너뛰고
+  // 그보다 이전에 먹은 일반피가 있는지 계속 찾다가, 일반피가 아예 없을 때만 쌍피(가장
+  // 최근 것)로 대신 지급한다.
+  let idx=lastIndexOfType(arr, 'pi');
+  if(idx===-1) idx=lastIndexOfType(arr, 'ssangpi');
   if(idx===-1){ onDone(false); return; }
   const card=arr[idx];
   const from=capturedCardAnchor(fromIdx, card.id);
@@ -2865,6 +2913,38 @@ function performAutoPlayAction(){
   try{ saved = localStorage.getItem('gostop-theme') || 'navy'; }catch(e){}
   document.addEventListener('DOMContentLoaded', ()=>uiSetTheme(saved));
 })();
+/* 컴1/컴2 캡처 카드 크기를 기기별 고정 px로 추측하지 않고, 실제 패널(oppCap) 폭을
+   재서 한 줄에 정확히 5장(피는 쌍피/보너스 2장 계산, cap-label 26px 폭 기준)이 들어가는
+   최대 크기를 계산해 CSS 변수로 적용한다 — #opp1/#oppCap1은 카드 내용과 무관하게 폭이
+   정해지는 정적 레이아웃이라, 캡처된 카드가 하나도 없어도 정확히 측정된다. */
+function applyOppCardSize(){
+  const capEl = document.getElementById('oppCap1');
+  if(!capEl) return;
+  const capWidth = capEl.getBoundingClientRect().width;
+  if(!capWidth) return; // 아직 화면에 안 보이는 상태(레이아웃 전)면 건너뛴다
+  const labelW = 26, rowGap = 5, cardGap = 1, perLine = 5;
+  const available = capWidth - labelW - rowGap - (perLine-1)*cardGap;
+  const cardW = Math.max(16, Math.min(30, Math.floor(available/perLine)));
+  document.documentElement.style.setProperty('--opp-card-w', cardW+'px');
+  document.documentElement.style.setProperty('--opp-card-h', Math.round(cardW*1.545)+'px');
+}
+/* 덱(뒷면)·바닥패·손패는 전부 같은 크기(--card-w)를 쓰고, 그 값은 손패가 좁아진 우측
+   칸에서 한 줄에 정확히 4장이 들어가는 기준으로 계산한다 — 바닥패 자체의 폭(훨씬 넓음)
+   기준으로 계산하면 손패보다 커져서 서로 다른 크기로 보이기 때문에, 항상 더 좁은
+   손패 쪽 계산을 기준으로 삼고 바닥패/덱은 그 값을 그대로 따른다. #handRow(.hand-area)
+   안에 실제로 쌓인 첫 줄(.hand-row)의 폭을 재는데, 그래야 .hand-area 자체의 좌우
+   패딩(2px씩)까지 정확히 뺀 진짜 카드 배치 가능 폭을 얻는다. */
+function applyHandCardSize(){
+  const row = document.querySelector('#handRow .hand-row');
+  if(!row) return;
+  const width = row.getBoundingClientRect().width;
+  if(!width) return;
+  const gap = 4, perLine = 4;
+  const cardW = Math.max(20, Math.min(44, Math.floor((width-(perLine-1)*gap)/perLine)));
+  document.documentElement.style.setProperty('--card-w', cardW+'px');
+  document.documentElement.style.setProperty('--card-h', Math.round(cardW*1.55)+'px');
+}
+window.addEventListener('resize', ()=>{ applyOppCardSize(); applyHandCardSize(); });
 function uiStartNewGame(){
   window.scrollTo(0, 0);
   document.getElementById('setup').style.display='none';
@@ -2992,14 +3072,16 @@ function processInitialFloorTripleMonth(){
   render();
   proceedTurn();
 }
+/* 로그는 라운드가 어떻게 진행됐는지 나중에 스크롤해서 되짚어볼 수 있어야 하므로, 그
+   라운드 동안 있었던 내용을 전부 DOM에 남긴다(G.log는 startRound에서 라운드마다
+   초기화되므로 중간에 잘라내지 않아도 계속 쌓이지 않는다). 패널은 높이가 고정되고
+   overflow-y:auto이므로, 평소엔 자동으로 맨 아래(최신)만 보이고 위로 스크롤하면 그
+   라운드의 처음부터 다 볼 수 있다. */
 function addLog(msg){
   G.log.push(msg);
-  if(G.log.length>40) G.log.shift();
   const panel=document.getElementById('logPanel');
   if(panel){
-    const isDesktop = window.matchMedia('(min-width:700px)').matches;
-    const lineCount = isDesktop ? 12 : 6;
-    panel.innerHTML = G.log.slice(-lineCount).map(m=>'<div>'+m+'</div>').join('');
+    panel.innerHTML = G.log.map(m=>'<div>'+m+'</div>').join('');
     panel.scrollTop = panel.scrollHeight;
   }
 }
@@ -3295,7 +3377,7 @@ function executeBomb(playerIdx, bomb){
       return;
     }
     const card = bomb.cards[i];
-    const from = playerIdx===HUMAN ? handCardAnchor(card.id) : panelAnchor(playerIdx);
+    const from = playerIdx===HUMAN ? handCardAnchor(card.id) : oppHandOriginAnchor(playerIdx);
     const idx = hand.indexOf(card);
     if(idx!==-1) hand.splice(idx,1);
     render();
@@ -3487,6 +3569,19 @@ function deckAnchor(){ return rectAnchor(document.getElementById('deckTopCard'))
 function panelAnchor(playerIdx){
   const el = playerIdx===HUMAN ? document.querySelector('.human-panel') : document.getElementById('opp'+playerIdx);
   return rectAnchor(el) || floorAnchor();
+}
+/* 컴퓨터(opp) 손패가 바닥으로 나갈 때, 패널 전체 중앙이 아니라 "패 N장"이 표시되는
+   자리(.opp-hcountcell)에서 날아오는 것처럼 보이게 한다 — 패널 중앙은 이미 먹은 패가
+   쌓이는 영역(opp-cap)과 겹쳐 보여서, 마치 먹은 패 더미에서 카드가 나오는 것처럼 보이는
+   문제가 있었다. w/h는 실제 손패 수 칸의 작은 크기 대신 패널 크기를 그대로 써서
+   animatedCardSize의 "출발점이 패널이지 카드가 아니다" 판단이 그대로 유지되게 한다(위치만
+   손패 수 칸 중앙으로 옮기고, 날아가는 카드 크기 계산은 기존과 동일하게 유지). */
+function oppHandOriginAnchor(playerIdx){
+  const cell = document.querySelector('#opp'+playerIdx+' .opp-hcountcell');
+  const panel = panelAnchor(playerIdx);
+  if(!cell) return panel;
+  const r = cell.getBoundingClientRect();
+  return {x:r.left+r.width/2, y:r.top+r.height/2, w:panel.w, h:panel.h};
 }
 function capturedPanelAnchor(playerIdx){
   const el = playerIdx===HUMAN ? document.getElementById('humanCap') : document.getElementById('oppCap'+playerIdx);
@@ -3703,7 +3798,7 @@ function aiPlayTurn(playerIdx, excludeMonths, fallbackBomb){
   }
   const landing = handPlayFloorAnchor(card);
   const hasFloorMatch = G.floor.some(c=>c.month===card.month);
-  flyCardVisual(card, panelAnchor(playerIdx), landing, 380, (playedFlyer)=>{
+  flyCardVisual(card, oppHandOriginAnchor(playerIdx), landing, 380, (playedFlyer)=>{
     if(!G || G.roundOver) return;
     autoShakeOnPlay(playerIdx, hand, card);
     const idx=hand.indexOf(card);
@@ -4465,8 +4560,9 @@ function render(){
         '<span></span>'+
       '</div>'+
       '<div class="opp-cap" id="oppCap'+i+'"></div>';
-    renderCapturedGrid(document.getElementById('oppCap'+i), G.captured[i], (G.scoreHighlight && G.scoreHighlight.playerIdx===i) ? G.scoreHighlight.ids : null);
+    renderCapturedGrid(document.getElementById('oppCap'+i), G.captured[i], (G.scoreHighlight && G.scoreHighlight.playerIdx===i) ? G.scoreHighlight.ids : null, 5);
   }
+  applyOppCardSize();
 
   document.querySelectorAll('.floor-parked-card').forEach(el=>el.remove());
   const floorEl=document.getElementById('floorCards');
@@ -4515,18 +4611,27 @@ function render(){
   const hGoTag = G.goCount[HUMAN]>0 ? ' <span class="go-tag">('+G.goCount[HUMAN]+'고)</span>' : '';
   document.getElementById('humanScoreVal').innerHTML=hScore.total+'점'+hGoTag;
   document.getElementById('humanDetail').textContent = hScore.detail.length ? '  ('+hScore.detail.join(', ')+')' : '';
+  document.getElementById('humanHandCount').textContent = '패 '+G.hands[HUMAN].length+'장';
   document.getElementById('humanPanel').classList.toggle('active', G.turn===HUMAN && !G.roundOver);
-  renderCapturedGrid(document.getElementById('humanCap'), G.captured[HUMAN], (G.scoreHighlight && G.scoreHighlight.playerIdx===HUMAN) ? G.scoreHighlight.ids : null);
+  renderCapturedGrid(document.getElementById('humanCap'), G.captured[HUMAN], (G.scoreHighlight && G.scoreHighlight.playerIdx===HUMAN) ? G.scoreHighlight.ids : null, 5);
 
-  const handEl=document.getElementById('handRow');
-  handEl.innerHTML='';
+  // 손패를 한 줄로 쭉 늘어놓지 않고 2줄로 나눠(예: 7장 -> 4장+3장) 가운데 정렬로 보여준다 —
+  // 첫 줄에 절반을 올림한 만큼, 둘째 줄에 나머지를 담는다.
+  const handWrap=document.getElementById('handRow');
+  handWrap.innerHTML='';
+  const handRow1=document.createElement('div'); handRow1.className='hand-row';
+  const handRow2=document.createElement('div'); handRow2.className='hand-row';
   const clickable = (G.phase==='humanPlay' || G.phase==='bombSkipChoice') && !G.roundOver;
   const bombCardIds = (G.phase==='humanPlay' && G.bombCandidates && G.bombCandidates.length)
     ? new Set(G.bombCandidates.flatMap(b=>b.cards.map(c=>c.id)))
     : null;
   // 흔들기 가능 안내 문구 대신, 그 월 3장을 손패에서 직접 강조 표시만 한다.
   const shakeMonths = (G.phase==='humanPlay' && !G.roundOver) ? new Set(checkShakeCandidates(HUMAN)) : null;
-  sortByMonth(G.hands[HUMAN]).forEach(card=>{
+  const sortedHand = sortByMonth(G.hands[HUMAN]);
+  // 첫 줄이 4장을 우선 채운다(4장 이하면 한 줄로 전부, 5장 이상이면 첫 줄 4장 고정 +
+  // 나머지가 둘째 줄로).
+  const handSplit = Math.min(sortedHand.length, 4);
+  sortedHand.forEach((card,i)=>{
     const el=makeCardEl(card,false);
     if(clickable){
       el.classList.add('selectable');
@@ -4535,8 +4640,11 @@ function render(){
     if(bombCardIds && bombCardIds.has(card.id)) el.classList.add('choose-target');
     else if(shakeMonths && shakeMonths.has(card.month)) el.classList.add('shake-target');
     if(card.bonusDrawn) el.classList.add('bonus-drawn'); // 보너스 카드를 낸 뒤 덱에서 새로 뽑은 카드 표시
-    handEl.appendChild(el);
+    (i<handSplit ? handRow1 : handRow2).appendChild(el);
   });
+  handWrap.appendChild(handRow1);
+  if(handRow2.children.length) handWrap.appendChild(handRow2);
+  applyHandCardSize();
 
   const bar=document.getElementById('goStopBar');
   if(G.phase==='goStopChoice'){
@@ -4589,7 +4697,12 @@ function makeCardEl(card, mini){
   div.innerHTML=cardSVG(card)+'<div class="c-month">'+(card.isBonus?'':card.month)+'</div>';
   return div;
 }
-function renderCapturedGrid(el, cards, highlightIds){
+/* maxPerLine(선택): 주어지면 한 줄에 담기는 "장수"(피는 쌍피/보너스를 2장으로 셈) 합이
+   그 값을 넘지 않도록 줄(cap-cards)을 명시적으로 나눠서 쌓는다 — CSS flex-wrap의 자동
+   줄바꿈에 기대지 않으므로, 라벨 칸이 폭을 잡아먹어 여유 공간이 좁은 컴퓨터 패널에서도
+   항상 정확히 그 장수 단위로 끊긴다. 생략하면 기존처럼 컨테이너 폭에 맞춰 자연스럽게
+   흘러가는 한 줄짜리 cap-cards만 쓴다(사람 패널은 폭이 충분해 이 모드를 그대로 씀). */
+function renderCapturedGrid(el, cards, highlightIds, maxPerLine){
   if(!el) return;
   el.innerHTML='';
   if(!cards.length){ el.innerHTML='<div class="cap-empty">아직 가져온 패가 없습니다</div>'; return; }
@@ -4605,16 +4718,64 @@ function renderCapturedGrid(el, cards, highlightIds){
   cats.forEach(cat=>{
     if(!cat.list.length) return;
     const row=document.createElement('div'); row.className='cap-row';
-    const count = cat.label==='피' ? cat.list.reduce((s,c)=>s+((c.type==='ssangpi'||c.flexible)?2:1),0) : cat.list.length;
+    const valueOf = c => (cat.label==='피' && (c.type==='ssangpi'||c.flexible)) ? 2 : 1;
+    const count = cat.list.reduce((s,c)=>s+valueOf(c),0);
     const lbl=document.createElement('div'); lbl.className='cap-label'; lbl.textContent=cat.label+' '+count;
     row.appendChild(lbl);
-    const wrap=document.createElement('div'); wrap.className='cap-cards';
-    cat.list.forEach(c=>{
-      const cardEl = makeCardEl(c,true);
-      if(highlightIds && highlightIds.has(c.id)) cardEl.classList.add('score-highlight');
-      wrap.appendChild(cardEl);
-    });
-    row.appendChild(wrap);
+    const lines=document.createElement('div'); lines.className='cap-lines';
+    if(maxPerLine){
+      // 캡처한 순서대로 한 장씩 처리하며 줄을 채운다. 이미 값이 maxPerLine(5)에 정확히
+      // 도달해 "닫힌" 줄은 그 뒤로 무슨 카드가 들어오든 절대 다시 건드리지 않는다.
+      // 아직 안 닫힌 줄에 대해서만, 앞에서부터 순서대로 다음을 시도한다:
+      //   1) 그냥 바로 들어가면(줄 값+새 카드 값<=5) 그 줄에 채운다.
+      //   2) 안 들어가면, 그 줄의 "마지막 카드 하나를 빼면 정확히 5가 되는" 줄이 있는지
+      //      찾는다 — 있으면 그 마지막 카드를 새 카드로 맞바꾼다(새 카드가 줄 끝에 들어가고,
+      //      빠진 카드는 새 줄을 연다). 정확히 5를 채우지 못하는 맞바꿈은(예: 쌍피 2장짜리
+      //      줄에 쌍피가 또 들어와 마지막 쌍피와 바꿔봐야 여전히 4인 경우) 하지 않는다 —
+      //      아무 의미가 없기 때문이다.
+      //   3) 그래도 안 되면 새 줄을 연다.
+      // 이 규칙 덕분에, 이미 값1짜리 4장으로 정확히 5를 채울 수 있는 줄에 쌍피가 들어오면
+      // 가장 최근에 채워진 값1 카드 한 장만 다음 줄로 밀려나고, 반대로 쌍피끼리는(빼도 값이
+      // 그대로라 이득이 없으므로) 서로 맞바꾸지 않고 그냥 새 줄로 간다.
+      const groups = []; // {cards:[], value:0}
+      cat.list.forEach(c=>{
+        const val = valueOf(c);
+        const direct = groups.find(g=>g.value<maxPerLine && g.value+val<=maxPerLine);
+        if(direct){ direct.cards.push(c); direct.value+=val; return; }
+        let swapTarget=null;
+        for(const g of groups){
+          if(g.value>=maxPerLine) continue;
+          const lastVal = valueOf(g.cards[g.cards.length-1]);
+          if(g.value-lastVal+val===maxPerLine){ swapTarget=g; break; }
+        }
+        if(swapTarget){
+          const bumped = swapTarget.cards.pop();
+          swapTarget.value -= valueOf(bumped);
+          swapTarget.cards.push(c); swapTarget.value += val;
+          groups.push({cards:[bumped], value:valueOf(bumped)});
+          return;
+        }
+        groups.push({cards:[c], value:val});
+      });
+      groups.forEach(g=>{
+        const wrap=document.createElement('div'); wrap.className='cap-cards';
+        g.cards.forEach(c=>{
+          const cardEl = makeCardEl(c,true);
+          if(highlightIds && highlightIds.has(c.id)) cardEl.classList.add('score-highlight');
+          wrap.appendChild(cardEl);
+        });
+        lines.appendChild(wrap);
+      });
+    } else {
+      const wrap=document.createElement('div'); wrap.className='cap-cards';
+      cat.list.forEach(c=>{
+        const cardEl = makeCardEl(c,true);
+        if(highlightIds && highlightIds.has(c.id)) cardEl.classList.add('score-highlight');
+        wrap.appendChild(cardEl);
+      });
+      lines.appendChild(wrap);
+    }
+    row.appendChild(lines);
     el.appendChild(row);
   });
 }
@@ -4650,8 +4811,10 @@ function showRoundEndOverlay(winnerIdx, baseScore, goCount, multiplier, finalSco
   document.getElementById('overlayTitle').textContent=title;
   document.getElementById('overlayBody').innerHTML=body;
   if(scoreIds.size){
-    const scoreCards = sortByMonth(G.captured[winnerIdx].filter(c=>scoreIds.has(c.id)));
-    renderCapturedGrid(document.getElementById('overlayScoreCards'), scoreCards, scoreIds);
+    // 월별로 다시 정렬하지 않고 실제 캡처 순서 그대로 넘긴다 — maxPerLine=5까지 똑같이
+    // 줘서, 실제 패널(컴1/컴2/사람 모두 동일한 규칙)에 놓여 있던 배치 그대로 보여준다.
+    const scoreCards = G.captured[winnerIdx].filter(c=>scoreIds.has(c.id));
+    renderCapturedGrid(document.getElementById('overlayScoreCards'), scoreCards, scoreIds, 5);
   }
   const btns=document.getElementById('overlayBtns');
   btns.innerHTML='';
