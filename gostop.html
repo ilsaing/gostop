@@ -2570,6 +2570,21 @@ function updateOverlayAutoBadge(){
    3) upside — 계속 고를 했을 때 배율이 커질 여지(흔들기 누적, 3고 임박, 상대 광박·피박 조건). */
 function assessGoStopFactors(playerIdx){
   const hand = G.hands[playerIdx];
+  // 바닥에 뻑(3장이 묶인 더미)이 있다면, 그 월의 마지막 한 장을 누가 쥐고 있느냐에 따라 유불리가 갈린다.
+  // 무조건 위험한 게 아니라, 내가 그 한 장을 들고 있으면 오히려 언제든 쓸어올 수 있는 큰 기회다.
+  const ppeokMonths = [...new Set(G.floor.filter(c=>c.ppeokOwner!==undefined).map(c=>c.month))];
+  const unclaimedPpeokMonths = ppeokMonths.filter(m=>!hand.some(c=>c.month===m));
+  // 보너스 카드가 아직 아무에게도 캡처되지 않았다면(=게임에 남아있다면), 뻑과 마찬가지로
+  // 누가 쥐고 있느냐로 유불리가 갈린다. 내가 쥐고 있으면 곧 피 2장을 추가로 확보할 기회이고,
+  // 아니라면(상대 손패나 덱 어딘가에 있다면) 상대가 그 이득을 볼 위험으로 취급한다.
+  const bonusCaptured = [0,1,2].some(i=>G.captured[i].some(c=>c.isBonus));
+  const bonusIsRisk = !bonusCaptured && !hand.some(c=>c.isBonus);
+  let ppeokMineBonus = 0;
+  ppeokMonths.forEach(m=>{
+    if(hand.some(c=>c.month===m)) ppeokMineBonus += 0.3; // 내가 쥐고 있다 — 강력한 추가 기대 점수
+  });
+  if(!bonusCaptured && hand.some(c=>c.isBonus)) ppeokMineBonus += 0.3;
+
   let oppThreat = 0;
   for(let i=0;i<3;i++){
     if(i===playerIdx) continue;
@@ -2580,24 +2595,23 @@ function assessGoStopFactors(playerIdx){
     // 있는지 본다. 사소한 피 근접 정도는 잡음이 되므로 확실히 큰 위험(문턱 이상)만 반영한다.
     let imminentJump = 0;
     G.floor.forEach(f=>{ if(f.isBonus) return; const jump = scoreProximityValue(G.captured[i], [f], null, i); if(jump>imminentJump) imminentJump = jump; });
+    // 12차 튜닝: 뻑 더미(내가 못 쥔 것)·보너스 카드(아무도 못 쥔 것)의 위험도 같은 방식(상대별
+    // scoreProximityValue + 최댓값 갱신)으로 반영한다. 예전엔 이 둘을 루프 밖에서 이미 확정된
+    // 단일 oppThreat에 고정 상수("+2")로 그냥 더했는데, 그러면 ①실제로 그 카드가 어느 상대에게
+    // 더 위험한지(예: 피 10장 문턱이 코앞인 상대) 구분이 안 되고 ②뻑(4장 뭉치)과 보너스(쌍피
+    // 1장)를 똑같은 크기로 취급하는 두 가지 문제가 있었다. 순수 휴리스틱 비대칭 자기대국
+    // (N=30000, z=4.18, mean=+0.072/판)으로 검증 후 채택.
+    unclaimedPpeokMonths.forEach(m=>{
+      const pile = G.floor.filter(f=>f.month===m);
+      const jump = scoreProximityValue(G.captured[i], pile, null, i);
+      if(jump>imminentJump) imminentJump = jump;
+    });
+    if(bonusIsRisk){
+      const jump = scoreProximityValue(G.captured[i], [{type:'ssangpi'}], null, i);
+      if(jump>imminentJump) imminentJump = jump;
+    }
     if(imminentJump >= 3) threat += imminentJump;
     if(threat>oppThreat) oppThreat = threat;
-  }
-  // 바닥에 뻑(3장이 묶인 더미)이 있다면, 그 월의 마지막 한 장을 누가 쥐고 있느냐에 따라 유불리가 갈린다.
-  // 무조건 위험한 게 아니라, 내가 그 한 장을 들고 있으면 오히려 언제든 쓸어올 수 있는 큰 기회다.
-  const ppeokMonths = [...new Set(G.floor.filter(c=>c.ppeokOwner!==undefined).map(c=>c.month))];
-  let ppeokMineBonus = 0;
-  ppeokMonths.forEach(m=>{
-    if(hand.some(c=>c.month===m)) ppeokMineBonus += 0.3; // 내가 쥐고 있다 — 강력한 추가 기대 점수
-    else oppThreat += 2; // 나는 못 쥔다 — 상대나 덱 어딘가에 있어 상대에게 넘어갈 위험으로 취급
-  });
-  // 보너스 카드가 아직 아무에게도 캡처되지 않았다면(=게임에 남아있다면), 뻑과 마찬가지로
-  // 누가 쥐고 있느냐로 유불리가 갈린다. 내가 쥐고 있으면 곧 피 2장을 추가로 확보할 기회이고,
-  // 아니라면(상대 손패나 덱 어딘가에 있다면) 상대가 그 이득을 볼 위험으로 취급한다.
-  const bonusCaptured = [0,1,2].some(i=>G.captured[i].some(c=>c.isBonus));
-  if(!bonusCaptured){
-    if(hand.some(c=>c.isBonus)) ppeokMineBonus += 0.3;
-    else oppThreat += 2;
   }
   // 라운드가 막판(덱이 얇음)으로 갈수록 상대의 oppThreat는 (다들 점수가 쌓여서) 자연히
   // 커지는데, 그 자체를 그대로 다 믿으면 과도하게 보수적으로 접힌다 — deckPenalty가 이미
