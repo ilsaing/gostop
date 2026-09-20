@@ -1740,13 +1740,59 @@ function godoriAchievable(playerIdx){
   if(playerIdx!==undefined) return [...owners].every(o=>o===playerIdx);
   return owners.size<=1;
 }
+/* 광/피/쌍피/단/고도리 다섯 갈래 전부에 공통으로 쓰는 "임박도" 보정. 두 축이 있다:
+   1) 내가 이미 몇 장 모았는지에 따른 근접도(achievable 상태에서의 문턱 접근).
+   2) 특정 상대가 이미 몇 장 모았는지에 따른 위협도 — 광/피처럼 "박(2배 벌금)" 위험이 걸린
+      경우는 내가 그 문턱을 못 넘으면 상대가 완성했을 때 손해를 보므로 탈출을 서두르고
+      (gwangProximityBonus/piProximityBonus의 오퍼넌트 위협 가산), 단/고도리처럼 독점 경쟁인
+      경우는 나한테는 이미 죽었어도 특정 상대에게 완성이 임박했다면 그 마지막 카드를 상대에게
+      넘기지 않는 게 중요하므로 방어 가치를 높인다(oppComboThreatBonus). 8차 통계 튜닝(순수
+      휴리스틱 비대칭 자기대국, 세션 단위 페어드 N=70000, z=2.13)으로 검증 후 채택. */
+function gwangProximityBonus(playerIdx){
+  if(playerIdx===undefined || typeof G==='undefined' || !G || !G.captured) return 0;
+  const gN = G.captured[playerIdx].filter(c=>c.type==='gwang').length;
+  let bonus = {0:0,1:1,2:3,3:2,4:5}[gN] || 0;
+  if(gN===0){
+    // 광박(광 0장) 상태인데 상대가 이미 광 2장 이상(성립 임박)을 모았다면, 광 카드를
+    // 챙겨 광박을 벗어나는 게 급하다 — 예전엔 이 판단이 sameMonthRival 비교에만 있는
+    // 별도 규칙(gwangDoubleJeopardyInsurance)이었는데, cardWeight로 통합했다.
+    const oppGwangThreat = [0,1,2].some(i=>i!==playerIdx && G.captured[i].filter(c=>c.type==='gwang').length>=2);
+    if(oppGwangThreat) bonus += 2.5;
+  }
+  return bonus;
+}
+function piProximityBonus(playerIdx){
+  if(playerIdx===undefined || typeof G==='undefined' || !G || !G.captured) return 0;
+  const pN = G.captured[playerIdx].filter(c=>c.type==='pi').length + G.captured[playerIdx].filter(c=>c.type==='ssangpi').length*2;
+  let bonus = 0;
+  if(pN>=8) bonus += 1.6;
+  else if(pN>=5) bonus += 0.5;
+  if(pN>=1 && pN<=5){
+    const oppPiBakThreat = [0,1,2].some(i=>i!==playerIdx && (G.captured[i].filter(c=>c.type==='pi').length+G.captured[i].filter(c=>c.type==='ssangpi').length*2)>=10);
+    if(oppPiBakThreat) bonus += 2.5;
+  }
+  return bonus;
+}
+function oppComboThreatBonus(playerIdx, ownerFilterFn, imminentBonus, startedBonus){
+  if(playerIdx===undefined || typeof G==='undefined' || !G || !G.captured) return 0;
+  const oppCount = Math.max(0, ...[0,1,2].filter(i=>i!==playerIdx).map(i=>G.captured[i].filter(ownerFilterFn).length));
+  if(oppCount>=2) return imminentBonus;
+  if(oppCount===1) return startedBonus;
+  return 0;
+}
 function cardWeight(card, playerIdx){
-  if(card.type==='gwang') return card.month===12 ? 4 : 5; // 비광 2.8->4: 6차 통계 튜닝(baa9eb4 고정 베이스라인 대비, 세션 단위 페어드 N=8000, z=2.81)
+  if(card.type==='gwang') return (card.month===12 ? 4 : 5) + gwangProximityBonus(playerIdx); // 비광 2.8->4: 6차 통계 튜닝(baa9eb4 고정 베이스라인 대비, 세션 단위 페어드 N=8000, z=2.81)
   if(card.type==='tti'){
     // 비띠, 혹은 이미 다른 두 사람에게 갈려서 단 완성이 불가능해진 색이면 단 조합으로는 가치가 없다.
     // 다만 그래도 "5장 이상=1점"이라는 평문 점수는 남아있으므로, 내가 이미 모은 양+손에 든 잠재력을 봐서 보정한다.
     const usableForDan = card.ttiType && ttiComboAchievable(card.ttiType, playerIdx);
-    return usableForDan ? 2 : 1.2 + flatThresholdBonus('tti', playerIdx); // 죽은 띠 1->1.2: 7차 통계 튜닝(baa9eb4 고정 베이스라인 대비, 세션 단위 페어드 N=8000, z=2.68)
+    if(usableForDan) return 2;
+    // dead라도 특정 상대가 이미 이 색 단을 1~2장 모은 상태라면, 나한테는 죽었어도 그 상대에게는
+    // 완성이 임박한 위협이므로 이 마지막 카드의 방어 가치를 높인다.
+    const threatBonus = card.ttiType && card.ttiType!=='rain'
+      ? oppComboThreatBonus(playerIdx, c=>c.type==='tti'&&c.ttiType===card.ttiType, 3, 0.6)
+      : 0;
+    return 1.2 + flatThresholdBonus('tti', playerIdx) + threatBonus; // 죽은 띠 1->1.2: 7차 통계 튜닝(baa9eb4 고정 베이스라인 대비, 세션 단위 페어드 N=8000, z=2.68)
   }
   if(card.type==='yeol'){
     // 이 월에서 열끗과 짝지어지는 나머지 패(피/쌍피) 중 가장 비싼 카드의 가치 차이.
@@ -1763,9 +1809,15 @@ function cardWeight(card, playerIdx){
     }
     // 고도리(새) 열끗이라도 이미 완성이 불가능해졌다면 단순 열끗과 같되, 마찬가지로 평문 점수 잠재력을 보정한다.
     const usableForGodori = card.bird && godoriAchievable(playerIdx);
-    return usableForGodori ? 2.2 : 1 + flatThresholdBonus('yeol', playerIdx) + pieceBonus; // 고도리achievable 2->2.2: 7차 통계 튜닝(N=8000, z=2.68)
+    if(usableForGodori) return 2.2;
+    // 새 열끗인데 dead(고도리 불가능)라면, 특정 상대가 이미 새 열끗을 1~2장 모은 상태일 수
+    // 있다 — 그 상대에게는 완성이 임박한 위협이므로 방어 가치를 높인다(새 없는 열끗은 해당 없음).
+    const godoriThreatBonus = card.bird
+      ? oppComboThreatBonus(playerIdx, c=>c.type==='yeol'&&c.bird, 5, 1)
+      : 0;
+    return 1 + flatThresholdBonus('yeol', playerIdx) + pieceBonus + godoriThreatBonus; // 고도리achievable 2->2.2: 7차 통계 튜닝(N=8000, z=2.68)
   }
-  return {ssangpi:6, pi:3}[card.type]; // 피 3.5->3: 6차 통계 튜닝(baa9eb4 고정 베이스라인 대비, N=8000, z=2.81)
+  return {ssangpi:6, pi:3}[card.type] + piProximityBonus(playerIdx); // 피 3.5->3: 6차 통계 튜닝(baa9eb4 고정 베이스라인 대비, N=8000, z=2.81)
 }
 /* 단/고도리 조합이 죽어버린 띠·열끗이라도, "5장 이상부터 1장당 1점"이라는 평문 점수 문턱에는
    여전히 기여한다. 내가 이미 캡처한 양(cap)과 손에 든 같은 종류(inHand, 아직 못 먹었지만
@@ -2072,6 +2124,10 @@ function opponentRiskIfLeft(playerIdx, cards){
   for(let i=0;i<3;i++){
     if(i===playerIdx) continue;
     let risk = scoreProximityValue(G.captured[i], cards, null, i);
+    // 이미 흔들기(폭탄 포함)를 확정한 상대는 최종 점수가 그만큼(흔든 횟수마다 x2) 배가되므로,
+    // 같은 점수 증가라도 이 상대에게는 원래보다 더 위험하다(11차 통계 튜닝: 순수 휴리스틱
+    // 비대칭 자기대국, N=70000, z=2.35로 검증 후 채택).
+    risk *= Math.pow(2, G.shakeCount[i]||0);
     // "이 카드들을 지금 상대 i가 가져가서 당장 3점 이상을 채운다면" 그 결과 누군가 파산하고,
     // 그게 나에게 유리한지/불리한지 시뮬레이션한다. aiDecideGoStop의 anyBankrupt 판단(내가
     // 스톱할지)과 완전히 같은 원리를, "상대에게 패를 넘길지"에도 그대로 확장한 것이다.
@@ -2216,24 +2272,10 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
     const myPiAfter = myPiBefore + piAdded;
     const oppPiBakThreat = [0,1,2].some(i=>i!==playerIdx && (G.captured[i].filter(c=>c.type==='pi').length+G.captured[i].filter(c=>c.type==='ssangpi').length*2)>=10);
     if(oppPiBakThreat && myPiBefore>=1 && myPiBefore<=5 && myPiAfter>5) blockRisk += 5; // 피박 탈출 시급
-    // 광박(광 0장)과 피박(피 1~5장)을 동시에 걸치고 있으면 최종 정산 배율이 4배까지 겹칠 수
-    // 있는 이중 위험 구간이다(규칙 설명: "두 조건을 동시에 충족하면 4배"). 지금 광을 한 장도
-    // 못 모았는데 아직 피박 구간에도 있다면, 이번에 광을 확보해 그중 한 축만 벗어나도 최악의
-    // 배율을 절반으로 줄이는 보험 가치가 있다 — 3광 조합을 못 채워도 상관없다. 이미 피 6장
-    // 이상으로 피박을 벗어난 상태라면 이 이중 위험이 사라지므로 보험 가치도 없어진다.
-    // (몬테카를로 시뮬레이션 검증: 이중 위험 구간에서는 광이 쌍피보다 평균 코인이 더 높았고,
-    // 피박을 미리 벗어난 대조군에서는 다시 쌍피가 더 높아 이 보험 효과가 실제임을 확인함.)
-    // 다만 이 보험은 실제로 "그 판이 광 점수로 끝날 위험"이 있을 때만 의미가 있다 — 아무도
-    // 광을 모으고 있지 않다면 광박 자체가 일어날 일이 없다. 상대가 이미 광 3장(광 점수 성립)을
-    // 모은 뒤에는 이미 늦다 — 광 4장 중 상대가 3장을 쥐고 있으면 남은 1장을 내가 가져가봐야
-    // 광박만 겨우 면할 뿐 이미 상대는 그 월 조합에서 앞서 있다. 광 2장(3장째를 노리는 중)일
-    // 때부터 앞질러 대비해야 실질적인 회피 효과가 있다 — oppPiBakThreat(피 10장, 이미 점수
-    // 성립된 뒤 반응)와 달리 광은 조합 성립 "직전"에 미리 반응하는 구조다.
-    // 그리고 내가 이미 광을 1장이라도 모았다면(myGwangBefore>=1) 광박(광 0장) 자체가 이미
-    // 회피된 상태이므로 이 보험은 의미가 없다 — 아래 myGwangBefore===0 조건이 그걸 보장한다.
-    const myGwangBefore = G.captured[playerIdx].filter(c=>c.type==='gwang').length;
-    const oppGwangThreat = [0,1,2].some(i=>i!==playerIdx && G.captured[i].filter(c=>c.type==='gwang').length>=2);
-    const gwangDoubleJeopardyInsurance = c => (oppGwangThreat && c.type==='gwang' && myGwangBefore===0 && myPiBefore>=1 && myPiBefore<=5) ? 2 : 0;
+    // (예전엔 여기에 "광박+피박 동시 위험 시 광에 +2 보험"이라는 개별 규칙이 있었다. 지금은
+    // cardWeight 자체가 gwangProximityBonus/piProximityBonus로 광박·피박 탈출 긴급도를 상시
+    // 반영하므로 — sameMonthRival 비교뿐 아니라 baseWeight·상대위협·버릴패 판단 전체에 일관되게
+    // 퍼지도록 — 이 특수 규칙은 제거하고 cardWeight로 통합했다.)
 
     // 확정된(hiddenCount=0) 패는 상대가 절대 손댈 수 없어 언제든 나중에 먹어도 안전하다. 반대로
     // 경합 중인(hiddenCount>0) 패는 상대 위협 점수가 우연히 0으로 나오는 흔한 상황에서도 "지금
@@ -2327,7 +2369,7 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
     const better = !bestScore
       || immediateScore>bestScore.immediateScore
       || (immediateScore===bestScore.immediateScore && blockRisk>bestScore.blockRisk)
-      || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && sameMonthRival && (cardWeight(card,playerIdx)+gwangDoubleJeopardyInsurance(card))>(cardWeight(best,playerIdx)+gwangDoubleJeopardyInsurance(best)))
+      || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && sameMonthRival && cardWeight(card,playerIdx)>cardWeight(best,playerIdx))
       || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && !sameMonthRival && mineValue>bestScore.mineValue)
       || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && !sameMonthRival && mineValue===bestScore.mineValue && handSupport>bestScore.handSupport)
       || (immediateScore===bestScore.immediateScore && blockRisk===bestScore.blockRisk && !sameMonthRival && mineValue===bestScore.mineValue && handSupport===bestScore.handSupport && baseWeight>bestScore.baseWeight);
@@ -2465,6 +2507,13 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
     // 있을 때) 모두에 더해, 문턱 신호가 약하더라도 비싼 카드가 우선 버려지지 않게 한다.
     oppRisk += cardWeight(card,playerIdx) * 0.2;
     mineVal += cardWeight(card,playerIdx) * 0.2;
+    // 쪽으로 상대의 피를 뺏어올 수 있다면 그만큼 이 카드를 버리는 게 안전하다(위험이 아니라
+    // 방어 수단)고 본다. 예전엔 이 신호가 마지막 타이브레이커(w)에만 있어서 oppRisk·mineVal이
+    // 이미 갈린 대다수 상황에서는 전혀 작동하지 않았다 — oppRisk에도 일부(0.3) 반영해 더
+    // 이른 우선순위에서부터 영향을 주도록 했다(9차 통계 튜닝, N=35000, z=2.41). "고를 부른
+    // 상대에게서 뺏어오는 피는 더 가치있게" 가중하는 방안도 같이 시도했으나, 그 조건(동점
+    // 시점에 상대가 고를 부른 상태)이 너무 드물게 겹쳐(1000판 중 17번) 추가 효과가 없어 기각.
+    oppRisk -= jjokBonus * 0.3;
     const w = cardWeight(card,playerIdx) - jjokBonus;
     const better = !bestDiscardScore
       || oppRisk<bestDiscardScore.oppRisk
@@ -2550,7 +2599,15 @@ function assessGoStopFactors(playerIdx){
     if(hand.some(c=>c.isBonus)) ppeokMineBonus += 0.3;
     else oppThreat += 2;
   }
-  const oppRisk = Math.max(0, Math.min(1, oppThreat/3.84));
+  // 라운드가 막판(덱이 얇음)으로 갈수록 상대의 oppThreat는 (다들 점수가 쌓여서) 자연히
+  // 커지는데, 그 자체를 그대로 다 믿으면 과도하게 보수적으로 접힌다 — deckPenalty가 이미
+  // 막판 위험을 따로 반영하고 있어 이중으로 겹친다. 막판일수록 oppThreat를 오히려 할인해서
+  // 반영한다(10차 통계 튜닝: 순수 휴리스틱 비대칭 자기대국, N=50000, z=2.89로 검증 후 채택 —
+  // 반대로 "막판 위협을 더 심각하게 본다"는 시도는 N=20000에서 z=-3.09로 유의미하게 나빴고,
+  // "초반 위협을 더 심각하게 본다"는 시도도 N=25000에서 z=-3.03으로 나빠 둘 다 기각).
+  const lateGameFactor = 1 - G.deck.length/21;
+  const oppThreatDiscounted = oppThreat * (1 - 0.6*lateGameFactor);
+  const oppRisk = Math.max(0, Math.min(1, oppThreatDiscounted/3.84));
 
   const allLocked = [0,1,2].flatMap(i=>G.captured[i]); // 이미 누군가 가져가 더는 못 쓰는 패
   let liveMonthHits = 0;
@@ -2946,12 +3003,15 @@ function performAutoPlayAction(){
   document.addEventListener('DOMContentLoaded', ()=>uiSetTheme(saved));
 })();
 /* 세로/가로 모드 모두 같은 카드 크기가 나오도록, 실제 렌더링된 DOM 요소 폭을 재는 대신
-   기기의 짧은 변(Math.min(innerWidth, innerHeight))을 기준으로 "세로 모드라면 이 요소가
-   몇 px가 됐을지"를 그대로 계산한다. 화면을 돌려도 짧은 변 값은 바뀌지 않으므로 결과
-   카드 크기도 항상 같다. 아래 상수는 세로 모드 CSS(패널 패딩·보더·간격, 84~215줄)를
-   그대로 옮긴 값이라 CSS를 바꾸면 여기도 같이 맞춰야 한다. */
+   기기의 짧은 변을 기준으로 "세로 모드라면 이 요소가 몇 px가 됐을지"를 그대로 계산한다.
+   innerWidth/innerHeight가 아니라 screen.width/height를 쓰는 이유: innerHeight는 주소창 등
+   브라우저 UI 높이만큼 항상 줄어드는데, 세로 모드에서는 그게 긴 변(높이)이라 "짧은 변"(=폭)
+   계산에 영향이 없지만 가로 모드에서는 바로 그 줄어든 높이가 짧은 변이 되어버려 카드가 더
+   작게 나온다. screen.width/height는 브라우저 UI와 무관한 실제 화면 크기라 방향이 바뀌어도
+   짧은 변 값이 항상 같다. 아래 상수는 세로 모드 CSS(패널 패딩·보더·간격, 84~215줄)를 그대로
+   옮긴 값이라 CSS를 바꾸면 여기도 같이 맞춰야 한다. */
 function computeGameWidth(){
-  const shortAxis = Math.min(window.innerWidth, window.innerHeight);
+  const shortAxis = Math.min(window.screen.width, window.screen.height);
   return Math.min(shortAxis - 24, 440); // body 좌우 패딩 12px*2, #game 최대폭 440px
 }
 function applyOppCardSize(){

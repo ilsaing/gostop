@@ -3614,12 +3614,15 @@ function performAutoPlayAction(){
   document.addEventListener('DOMContentLoaded', ()=>uiSetTheme(saved));
 })();
 /* 세로/가로 모드 모두 같은 카드 크기가 나오도록, 실제 렌더링된 DOM 요소 폭을 재는 대신
-   기기의 짧은 변(Math.min(innerWidth, innerHeight))을 기준으로 "세로 모드라면 이 요소가
-   몇 px가 됐을지"를 그대로 계산한다. 화면을 돌려도 짧은 변 값은 바뀌지 않으므로 결과
-   카드 크기도 항상 같다. 아래 상수는 세로 모드 CSS(패널 패딩·보더·간격, 84~215줄)를
-   그대로 옮긴 값이라 CSS를 바꾸면 여기도 같이 맞춰야 한다. */
+   기기의 짧은 변을 기준으로 "세로 모드라면 이 요소가 몇 px가 됐을지"를 그대로 계산한다.
+   innerWidth/innerHeight가 아니라 screen.width/height를 쓰는 이유: innerHeight는 주소창 등
+   브라우저 UI 높이만큼 항상 줄어드는데, 세로 모드에서는 그게 긴 변(높이)이라 "짧은 변"(=폭)
+   계산에 영향이 없지만 가로 모드에서는 바로 그 줄어든 높이가 짧은 변이 되어버려 카드가 더
+   작게 나온다. screen.width/height는 브라우저 UI와 무관한 실제 화면 크기라 방향이 바뀌어도
+   짧은 변 값이 항상 같다. 아래 상수는 세로 모드 CSS(패널 패딩·보더·간격, 84~215줄)를 그대로
+   옮긴 값이라 CSS를 바꾸면 여기도 같이 맞춰야 한다. */
 function computeGameWidth(){
-  const shortAxis = Math.min(window.innerWidth, window.innerHeight);
+  const shortAxis = Math.min(window.screen.width, window.screen.height);
   return Math.min(shortAxis - 24, 440); // body 좌우 패딩 12px*2, #game 최대폭 440px
 }
 function applyOppCardSize(){
