@@ -1,0 +1,31 @@
+name: Copy gostop.html to index.html
+
+on:
+  push:
+    paths:
+      - gostop.html
+      - .github/workflows/copy-gostop.yml
+
+permissions:
+  contents: write
+
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy file
+        run: cp gostop.html index.html
+
+      - name: Commit and push if changed
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "index.html is already up to date"
+            exit 0
+          fi
+          git config user.name "ilsaing"
+          git config user.email "kanna2425@naver.com"
+          git add index.html
+          git commit -m "Copy gostop.html to index.html"
+          git push
