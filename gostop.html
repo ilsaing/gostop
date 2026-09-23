@@ -3899,7 +3899,10 @@ function handCardAnchor(cardId){
   return rectAnchor(el) || panelAnchor(HUMAN);
 }
 function currentZoomFactor(){
-  return window.matchMedia('(min-width:1280px) and (min-height:640px)').matches ? 1.5 : 1;
+  // CSS의 PC 3단 레이아웃은 높이와 무관하게 1440px 이상에서 body에 zoom:1.5를 적용한다.
+  // 따라서 브라우저 높이가 짧아져도 애니메이션 좌표를 동일한 1.5배 기준으로 환산해야
+  // getBoundingClientRect()의 화면 좌표와 position:fixed flyer의 좌표계가 어긋나지 않는다.
+  return window.matchMedia('(min-width:1440px)').matches ? 1.5 : 1;
 }
 function animatedCardSize(from, to){
   // AI 이동의 출발점은 상대 패널 전체라서, 카드 크기인 반대쪽 앵커를 사용한다.
