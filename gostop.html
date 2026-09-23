@@ -74,8 +74,9 @@
 
   #game{display:none; width:100%; max-width:440px; flex-direction:column; align-items:center;}
   .topbar{width:100%; display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); margin-bottom:8px; padding:0 0 0 2px;}
-  .cum-scores{display:flex; gap:10px; font-weight:700;}
+  .cum-scores{display:flex; align-items:center; gap:10px; font-weight:700;}
   .cum-scores span.me{color:var(--gold);}
+  .cum-scores > span{display:inline-flex; align-items:center; gap:4px;}
   .exit-btn{flex-shrink:0; margin-left:8px; width:74px; height:27px; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:3px; padding:0 5px; border-radius:7px; border:1px solid #4a2a2a; background:#2a1414; color:var(--muted); font-size:11px; line-height:1; cursor:pointer;}
   .exit-btn:active{transform:scale(.95);}
   #topExitBtn{margin:0;}
@@ -95,15 +96,15 @@
   .opp-scorecell{font-weight:700; color:var(--gold);}
   .opp-hcountcell{font-weight:400; color:var(--muted); font-size:11px; margin-left:auto; flex-shrink:0;}
   .go-tag{font-size:11px; font-weight:700; color:#ff9d5c;}
-  .dealer-tag{font-size:10px; font-weight:700; color:var(--panel-dark); background:var(--gold); border-radius:5px; padding:1px 4px; vertical-align:middle;}
+  .dealer-tag{font-size:10px; font-weight:700; color:var(--panel-dark); background:var(--gold); border-radius:5px; padding:1px 4px; vertical-align:middle; line-height:1.6;}
   .shake-badge{font-weight:700; color:#fff; background:#c0392b; border-radius:5px; padding:0 6px; vertical-align:middle; margin-left:3px; white-space:nowrap; line-height:1.6;}
   .human-score-left .shake-badge{font-size:13px;}
   .shake-wrap{display:inline-flex; flex-wrap:wrap; align-items:center; gap:2px; vertical-align:middle;}
-  .shake-reveal-card{margin-left:1px; box-shadow:0 0 0 1px #ff9d5c, 0 1px 2px rgba(0,0,0,.4); width:21px!important; height:32px!important;}
+  .shake-reveal-card{margin-left:1px; box-shadow:0 0 0 1px #ff9d5c, 0 1px 2px rgba(0,0,0,.4); width:21px!important; height:32px!important; border-radius:3px!important; --border-w:1.05px!important;}
   .shake-reveal-card.used{opacity:.4; filter:grayscale(60%);}
   .shake-reveal-card .c-month{font-size:6px!important; padding:0 2px!important;}
 
-  .table-area{width:100%; background:linear-gradient(160deg,var(--felt-a),var(--felt-b)); border:1px solid var(--border); border-radius:12px; padding:10px; min-height:150px; position:relative; display:flex; gap:8px;}
+  .table-area{width:100%; background:linear-gradient(160deg,var(--felt-a),var(--felt-b)); border:1px solid var(--border); border-radius:12px; padding:10px; min-height:150px; position:relative; display:flex; gap:10px;}
   .deck-pile{flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:4px; justify-content:center;}
   .deck-count{font-size:11px; color:var(--muted); font-weight:700;}
   /* 덱을 카드 여러 장이 쌓인 것처럼 입체적으로 보이도록, 남은 장수에 따라 뒤로 살짝씩
@@ -115,14 +116,23 @@
   .deck-stack{position:relative; width:var(--card-w, 40px); height:var(--card-h, 62px);}
   .deck-stack .card{position:absolute; top:0; left:0; margin:0; width:var(--card-w, 40px); height:var(--card-h, 62px);}
   .deck-stack .card.deck-empty{background:transparent; border:2px dashed var(--border); box-shadow:none;}
-  .floor-cards{flex:1; display:flex; flex-wrap:wrap; gap:6px; align-content:flex-start;}
+  /* 모바일 세로모드에서 바닥패가 한 줄에 7장까지 들어가 카드가 빽빽해 보이던 것을
+     6장까지만 들어가도록, 덱-바닥패 간격(위 table-area gap 8→10px)과 바닥패끼리의
+     간격(6→10px)을 살짝 늘림. */
+  .floor-cards{flex:1; display:flex; flex-wrap:wrap; gap:10px; align-content:flex-start;}
   .floor-cards .card{width:var(--card-w, 40px); height:var(--card-h, 62px);}
 
-  .card{width:40px;height:62px;border-radius:7px; background:#fdfbf5; border:2px solid #e8102e; display:flex; align-items:center; justify-content:center; position:relative; box-shadow:0 2px 3px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.5); flex-shrink:0; overflow:hidden;}
-  .card svg{width:100%; height:100%; display:block;}
+  .card{width:40px;height:62px;border-radius:calc(var(--card-w, 40px) / 7); background:#fdfbf5; --border-w:calc(var(--card-w, 40px) * 0.05); --border-c:#e8102e; display:flex; align-items:center; justify-content:center; position:relative; box-shadow:0 2px 3px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.5); flex-shrink:0; overflow:hidden;}
+  .card svg{position:absolute; top:-0.5px; left:-0.5px; width:calc(100% + 1px); height:calc(100% + 1px); display:block;}
+  /* 테두리를 실제 border 속성 대신 SVG보다 나중에 그려지는 오버레이 레이어(inset
+     box-shadow)로 그린다 — SVG가 흰 줄 방지를 위해 카드 경계 바깥으로 0.5px씩 번져
+     그려지는데(위 .card svg), 실제 border는 SVG보다 먼저(아래에) 그려져서 그 0.5px에
+     덮여 카드가 작을수록(테두리가 얇을수록) 상대적으로 훨씬 가늘어 보이는 문제가 있었다.
+     이 오버레이는 SVG 다음에 그려지는 별도 자식 요소라 항상 온전한 두께로 위에 보인다. */
+  .card-border{position:absolute; inset:0; border-radius:inherit; box-shadow:inset 0 0 0 var(--border-w,2px) var(--border-c,#e8102e); pointer-events:none;}
   .card .c-month{position:absolute; top:2px; left:2px; font-size:9.5px; color:#fff; font-weight:900; background:rgba(0,0,0,.55); border-radius:4px; padding:0 4px; line-height:1.5; z-index:2;}
   html[data-hide-labels="1"] .c-month{display:none;}
-  .card.mini{width:26px; height:40px; border-radius:6px; border-width:1px;}
+  .card.mini{width:26px; height:40px; border-radius:calc(var(--opp-card-w, 21px) / 7); --border-w:calc(var(--opp-card-w, 21px) * 0.05);}
   .card.mini .c-month{font-size:7.5px; padding:0 3px;}
   .card.ssangpi::after{content:'2';position:absolute; bottom:2px; right:3px; font-size:8px; line-height:1; background:#d81b60; color:#fff; border-radius:50%; width:11px; height:11px; display:flex; align-items:center; justify-content:center; font-weight:700; z-index:2; box-shadow:0 1px 2px rgba(0,0,0,.5);}
   .card.mini.ssangpi::after{width:9px;height:9px;font-size:6.5px; line-height:1;}
@@ -132,7 +142,7 @@
       repeating-linear-gradient(45deg, rgba(255,255,255,0.16) 0px, rgba(255,255,255,0.16) 1px, transparent 1px, transparent 4px),
       repeating-linear-gradient(-45deg, rgba(0,0,0,0.14) 0px, rgba(0,0,0,0.14) 1px, transparent 1px, transparent 4px),
       linear-gradient(165deg, #e2172f 0%, #c8102e 45%, #a80e28 100%);
-    border-color:#7a0a1c;
+    --border-c:#7a0a1c;
     display:flex; align-items:center; justify-content:center;
   }
   .card.back .c-label,.card.back .c-month{display:none;}
@@ -144,10 +154,17 @@
   .card.ppeok::before{content:'뻑'; position:absolute; top:2px; right:2px; background:#ff6b3d; color:#fff; font-size:8px; font-weight:900; padding:1px 5px; border-radius:6px; z-index:2;}
   @keyframes flashCard{0%{box-shadow:0 0 0 3px #ffd35c, 0 2px 3px rgba(0,0,0,.4);} 100%{box-shadow:0 2px 3px rgba(0,0,0,.4);}}
 
-  .log-panel{width:100%; background:var(--panel-darker); border:1px solid var(--border); border-radius:10px; padding:8px 10px; margin:8px 0; font-size:11.5px; color:var(--muted); height:64px; overflow-y:auto; line-height:1.6;}
+  .log-panel{width:100%; background:var(--panel-darker); border:1px solid var(--border); border-radius:10px; padding:8px 10px; margin:8px 0; font-size:11.5px; color:var(--muted); height:64px; overflow-y:auto; line-height:1.6;
+    /* 맨 위 줄이 중간에서 잘려 보이는 걸 픽셀 단위로 완전히 없애기는 어려워서(줄 높이가
+       컨테이너 높이의 정확한 배수가 되도록 맞추는 게 배율/줄바꿈에 따라 계속 틀어짐),
+       대신 위쪽 끝을 배경색으로 자연스럽게 흐려지게 해서 잘린 줄이 있어도 거슬리지
+       않게 한다. */
+    mask-image: linear-gradient(to bottom, transparent, black 6px);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black 6px);}
   .log-panel div:last-child{color:var(--cream);}
   .log-panel-wrap{position:relative; width:100%;}
-  .log-copy-btn{position:absolute; top:12px; right:6px; z-index:2; background:rgba(20,15,10,.85); color:var(--muted); border:1px solid var(--border); border-radius:6px; padding:2px 8px; font-size:10.5px; cursor:pointer;}
+  .log-copy-btn{position:absolute; top:15px; right:15px; z-index:2; background:rgba(20,15,10,.85); color:var(--muted); border:1px solid var(--border); border-radius:6px; padding:4px; width:22px; height:22px; display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  .log-copy-btn svg{width:14px; height:14px; display:block;}
   .log-copy-btn:active{transform:scale(.95);}
 
   .gostop-bar{width:100%; background:linear-gradient(180deg,#2a1e0c,#1c1508); border:1px solid var(--gold); border-radius:10px; padding:10px 12px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; gap:8px;}
@@ -277,20 +294,44 @@
      너비만 넓고 높이는 작은 휴대폰 가로모드는 이 규칙에서 제외해 확대로 인한 겹침/잘림을 막는다. */
   @media (min-width:1280px) and (min-height:640px){
     body{ zoom:1.5; }
-    .top-header{ max-width:900px; }
-    #game{ max-width:900px; }
+    /* 바닥패가 한 줄에 6장 이상 들어가도록 폭을 늘림: 원래 900px에서는 중앙 바닥패
+       칸(col-center)이 278px밖에 안 남아 36px 카드가 5장까지만 들어갔다. 960px로
+       늘리면 col-center가 338px가 되어 6장(36px×6+간격4px×5=236px)이 여유 있게
+       들어간다. */
+    .top-header{ max-width:960px; }
+    #game{ max-width:960px; }
     .game-body{ flex-direction:row; align-items:flex-start; gap:16px; }
     .col-opponents{ flex-direction:column; width:200px; flex-shrink:0; margin-bottom:0; order:2; }
     .col-opponents .opp-panel{ flex:none; }
     .main-col{ flex:1; min-width:0; order:1; }
     .main-row{ flex-direction:row; gap:16px; }
-    .col-human{ width:300px; flex-shrink:0; order:1; }
+    .col-human{ width:390px; flex-shrink:0; order:1; }
     .col-center{ flex:1; min-width:0; order:2; }
     .floor-cards{ gap:4px; }
-    .floor-cards .card{ width:36px; height:56px; }
+    /* 위쪽 모바일 세로모드용 gap 변경(table-area 8→10px)이 이 화면까지 새어들지
+       않도록, 이 화면 전용 값을 그대로 고정해 둔다. */
+    .table-area{ gap:8px; }
+    .floor-cards .card{ width:36px; height:56px; border-radius:5.14px; --border-w:1.8px; }
+    .deck-stack{ width:36px; height:56px; }
+    .deck-stack .card{ width:36px; height:56px; border-radius:5.14px; --border-w:1.8px; }
     .hand-row{ gap:4px; flex-wrap:nowrap; }
-    .hand-row .card{ width:36px; height:56px; }
-    .log-panel{ height:128px; }
+    .hand-row .card{ width:36px; height:56px; border-radius:5.14px; --border-w:1.8px; }
+    /* 사람 패널 폭(390px)에서 손패(36px 카드 4장+간격=156px, 여백 포함 160px)를
+       먹은 패 칸과 반반씩 나누면 자리가 모자라 손패 줄이 노란 경계선을 넘어간다.
+       손패 칸에 고정 폭을 먼저 확보해 주고 먹은 패 칸이 남는 폭을 쓰도록 한다. */
+    .human-body .human-cap{ flex:1 1 0; }
+    .hand-area{ flex:0 0 172px; }
+    /* 획득한 패(광/열끗/띠/피)는 한 줄에 5장이 들어가도록 JS가 그룹을 나누지만(maxPerLine=5),
+       실제 미니 카드 크기(--opp-card-w)는 휴대폰 세로 화면 폭 기준으로 계산돼 있어 이
+       PC 3단 레이아웃의 실제 패널 폭(컴퓨터 패널 178px, 사람 패널 먹은 패 칸)보다 커서
+       5장이 한 줄에 못 들어가고 자체적으로 줄바꿈됐다. 이 화면 전용으로 고정 크기를 줘서
+       5장이 정확히 한 줄에 들어가게 한다. */
+    .opp-cap .card.mini, #humanCap .card.mini, #overlayScoreCards .card.mini{ width:28px; height:43px; border-radius:4px; --border-w:1.4px; }
+    /* 로그는 항상 맨 아래로 스크롤된 상태로 보여서, 위쪽 padding(스크롤 시작점 이전
+       여백)은 실제로는 화면에 안 보이고 아래쪽 padding-bottom만 매번 빈 여백으로
+       나타난다 — 그래서 줄 수는 (clientHeight - padding-bottom)로 계산해야 한다.
+       6줄 기준: 6*18.4(줄 높이) + 8(기본 padding-bottom) + 테두리 ≈ 120px. */
+    .log-panel{ height:120px; }
   }
   /* 휴대폰 가로모드: 너비는 넓지만 높이가 얼마 없는 경우. 확대 없이 가로 폭을 활용한 3단
      배치로 바꾸되, 화면 높이를 넘어서면 겹치지 않고 스크롤되도록 한다. */
@@ -305,12 +346,27 @@
     .col-opponents{ flex-direction:column; width:200px; flex-shrink:0; margin-bottom:0; order:2; gap:6px; }
     .col-opponents .opp-panel{ flex:none; font-size:10.5px; padding:6px 7px; }
     .opp-header{ gap:3px; }
-    .main-col{ flex:1; min-width:0; order:1; }
-    .main-row{ flex-direction:row; gap:10px; }
-    .col-human{ width:220px; flex-shrink:0; order:1; }
-    .col-center{ flex:1; min-width:0; order:2; }
-    .table-area{ min-height:110px; padding:7px; }
-    .log-panel{ height:64px; margin:6px 0; }
+    .main-col{ flex:1; min-width:0; order:1; position:relative; display:grid; grid-template-columns:220px 1fr; column-gap:10px; row-gap:6px; }
+    /* main-row을 grid에서 투명화(display:contents)해서 안의 col-human/col-center가
+       main-col의 grid 트랙에 직접 배치되게 한다. col-human을 grid-row로 span하면
+       CSS Grid가 두 행에 걸친 아이템 높이를 맞추려고 남는 공간을 1행(table-area)에도
+       나눠 늘려버려서, 사람 패널이 길어질수록 바닥패 박스 자체가 커지고 그 안 카드
+       아래에 빈 공간이 생기는 문제가 있었다. 그래서 col-human은 grid 흐름에서 아예
+       빼고(position:absolute) 1열 자리만 트랙 폭으로 예약해두면, col-center/log는
+       서로의 실제 내용 높이로만 붙어 로그가 항상 바닥패 바로 아래에 온다. */
+    .main-row{ display:contents; }
+    .col-human{ position:absolute; left:0; top:0; width:220px; }
+    .col-center{ grid-column:2; grid-row:1; min-width:0; }
+    /* 위쪽 모바일 세로모드용 gap 변경(table-area 8→10px, floor-cards 6→10px)이
+       이 화면까지 새어들지 않도록, 이 화면 전용 값을 그대로 고정해 둔다. */
+    .table-area{ min-height:110px; padding:7px; gap:8px; }
+    .floor-cards{ gap:6px; }
+    .log-panel-wrap{ grid-column:2; grid-row:2; margin:0; width:auto; }
+    .log-panel{ height:120px; margin:0; }
+    /* 로그 복사 버튼: 기본 top:15px는 로그 1번째 줄(패딩8px+줄높이18.4px) 아래쪽에
+       걸쳐 살짝 처져 보인다. 모바일 가로모드는 화면이 좁아 특히 눈에 띄어, 버튼
+       중심이 첫 줄 중심과 나란해지도록 top을 낮춘다. */
+    .log-copy-btn{ top:6px; }
     /* 카드 크기(--opp-card-w/--card-w)는 이제 화면 방향과 무관하게 기기의 짧은 변
        기준으로 계산되므로(applyOppCardSize/applyHandCardSize), 이 화면에서 고정 px로
        되돌릴 필요가 없다 — 세로 모드와 항상 같은 크기가 나온다. */
@@ -319,7 +375,7 @@
     .human-body{flex-direction:column;}
     .human-body .human-cap, .human-body .hand-area{flex:none; width:100%;}
   }  .gallery-modal{position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:1000; display:flex; align-items:center; justify-content:center; padding:16px;}
-  .gallery-modal-inner{width:100%; max-width:640px; max-height:88vh; background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--border); border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.5); display:flex; flex-direction:column; overflow:hidden;}
+  .gallery-modal-inner{width:100%; max-width:340px; max-height:88vh; background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--border); border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.5); display:flex; flex-direction:column; overflow:hidden;}
   .gallery-modal-header{display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--border);}
   .gallery-modal-header h2{margin:0; font-size:18px; color:var(--gold);}
   .gallery-close-btn{background:transparent; border:1px solid var(--border); color:var(--cream); border-radius:8px; width:32px; height:32px; font-size:16px; cursor:pointer; line-height:1;}
@@ -328,7 +384,7 @@
   .gallery-month-title{color:var(--gold); font-weight:700; font-size:13px; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid var(--border);}
   .gallery-month-cards{display:flex; flex-wrap:wrap; justify-content:space-between; gap:14px;}
   .gallery-card-item{display:flex; flex-direction:column; align-items:center; gap:4px;}
-  .gallery-card-item .card{width:56px; height:86px; border-radius:8px; border-width:2px;}
+  .gallery-card-item .card{width:56px; height:86px; border-radius:8px; --border-w:2.8px;}
   .gallery-card-item .card .c-month{font-size:9.5px;}
   .gallery-card-item .card.ssangpi::after{width:14.4px;height:14.4px;font-size:9px; line-height:1;}
   .gallery-card-label{font-size:10px; line-height:14px; height:14px; color:var(--muted); text-align:center; white-space:nowrap;}
@@ -410,11 +466,11 @@
     <button type="button" class="theme-swatch" data-theme="wine" onclick="uiSetTheme('wine')" style="background:linear-gradient(135deg,#5a1f2e,#3d1420);" title="와인"></button>
     <button type="button" class="theme-swatch" data-theme="charcoal" onclick="uiSetTheme('charcoal')" style="background:linear-gradient(135deg,#3a3a3f,#232326);" title="차콜"></button>
   </div>
-  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+  <div style="display:none; align-items:center; justify-content:space-between; margin-bottom:8px;">
     <label class="coin-label" style="margin-bottom:0;">카드 라벨 (광/열끗/띠 등 글자 표시)</label>
     <button type="button" id="galleryBtn" onclick="uiOpenGallery()" style="background:var(--panel2); border:1.5px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 16px; font-size:12.5px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:5px;"><svg width="13" height="20" viewBox="0 0 44 62" preserveAspectRatio="none" style="flex-shrink:0;"><defs><clipPath id="galleryIconClip2"><rect x="1" y="1" width="42" height="60" rx="8"/></clipPath></defs><rect x="1" y="1" width="42" height="60" rx="8" fill="#ed1a21" stroke="#171310" stroke-width="2"/><g clip-path="url(#galleryIconClip2)"><ellipse cx="21.61" cy="19.49" rx="15.44" ry="14.20" fill="#ffffff" stroke="#171310" stroke-width="0.6"/><path d="M0,36.67 L0,62 L44,62 L44,40.10 L42.93,39.43 L41.41,38.62 L38.99,37.57 L34.37,36.05 L30.03,35.10 L24.23,34.33 L21.58,34.43 L19.61,34.33 L18.42,34.14 L14.59,34.14 L10.70,34.38 L7.21,34.81 L4.39,35.33 L1.69,36.05 Z" fill="#171310"/></g></svg>갤러리</button>
   </div>
-  <div class="theme-row" id="labelRow">
+  <div class="theme-row" id="labelRow" style="display:none;">
     <button type="button" class="opt-btn" data-label="show" onclick="uiSetLabelPref(true)">표시</button>
     <button type="button" class="opt-btn" data-label="hide" onclick="uiSetLabelPref(false)">숨김</button>
   </div>
@@ -499,7 +555,7 @@
       </div>
 
       <div class="log-panel-wrap">
-        <button type="button" class="log-copy-btn" id="logCopyBtn" onclick="uiCopyLog()">복사</button>
+        <button type="button" class="log-copy-btn" id="logCopyBtn" onclick="uiCopyLog()" title="로그 복사"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
         <div class="log-panel" id="logPanel"></div>
       </div>
     </div>
@@ -2865,11 +2921,7 @@ function uiSetLabelPref(show){
   });
   try{ localStorage.setItem('gostop-show-labels', show?'1':'0'); }catch(e){}
 }
-(function(){
-  let saved = false;
-  try{ const v = localStorage.getItem('gostop-show-labels'); if(v!==null) saved = (v==='1'); }catch(e){}
-  document.addEventListener('DOMContentLoaded', ()=>uiSetLabelPref(saved));
-})();
+document.addEventListener('DOMContentLoaded', ()=>uiSetLabelPref(false));
 /* ===== 자동 진행: 설정된 시간(0=끄기) 동안 아무 선택도 하지 않으면 컴퓨터와 같은 방식으로 자동 진행 ===== */
 let AUTO_PLAY_ENABLED = false;
 let AUTO_PLAY_DELAY = 0;
@@ -3208,10 +3260,12 @@ function uiCopyLog(){
   const btn = document.getElementById('logCopyBtn');
   if(!panel || !panel.innerText) return;
   const text = panel.innerText;
+  const copyIcon = btn ? btn.innerHTML : '';
+  const checkIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
   const showCopied = ()=>{
     if(!btn) return;
-    btn.textContent = '복사됨';
-    setTimeout(()=>{ btn.textContent = '복사'; }, 1200);
+    btn.innerHTML = checkIcon;
+    setTimeout(()=>{ btn.innerHTML = copyIcon; }, 1200);
   };
   const fallbackCopy = ()=>{
     const ta = document.createElement('textarea');
@@ -3709,8 +3763,8 @@ function renderFloorParkedCard(card, matchCards){
   const zf = currentZoomFactor();
   const el = makeCardEl(card, false);
   el.classList.add('flyer-card','floor-parked-card');
-  el.style.width=(anchor.w/zf)+'px';
-  el.style.height=(anchor.h/zf)+'px';
+  el.style.width=Math.round(anchor.w/zf)+'px';
+  el.style.height=Math.round(anchor.h/zf)+'px';
   el.style.left=(anchor.x/zf)+'px';
   el.style.top=(anchor.y/zf)+'px';
   document.body.appendChild(el);
@@ -3783,10 +3837,10 @@ function flyCardVisual(card, from, to, duration, onDone, showBack, keepOnDone){
   const flyer=document.createElement('div');
   flyer.className='card flyer-card'+(showBack?' back':' '+(card.type||'')+(card&&card.ttiType?' tti-'+card.ttiType:''));
   const size = animatedCardSize(from, to);
-  const w = size.w/zf, h = size.h/zf;
+  const w = Math.round(size.w/zf), h = Math.round(size.h/zf);
   flyer.style.width=w+'px'; flyer.style.height=h+'px';
   flyer.style.left=(from.x/zf)+'px'; flyer.style.top=(from.y/zf)+'px';
-  if(!showBack && card) flyer.innerHTML=cardSVG(card);
+  flyer.innerHTML=(!showBack && card ? cardSVG(card) : '')+'<div class="card-border"></div>';
   document.body.appendChild(flyer);
   void flyer.offsetWidth;
   requestAnimationFrame(()=>{
@@ -4031,9 +4085,10 @@ function flipCardInPlace(card, anchor, onDone, keepOnDone, existingFlyer){
   if(!existingFlyer){
     flyer.className = 'card flyer-card back';
     const size = anchor && anchor.w <= anchor.h ? anchor : {w:40, h:62};
-    const w = size.w/zf, h = size.h/zf;
+    const w = Math.round(size.w/zf), h = Math.round(size.h/zf);
     flyer.style.width=w+'px'; flyer.style.height=h+'px';
     flyer.style.left=(anchor.x/zf)+'px'; flyer.style.top=(anchor.y/zf)+'px';
+    flyer.innerHTML = '<div class="card-border"></div>';
     document.body.appendChild(flyer);
     void flyer.offsetWidth;
   }
@@ -4044,7 +4099,7 @@ function flipCardInPlace(card, anchor, onDone, keepOnDone, existingFlyer){
     flyer.classList.remove('back');
     if(card.type) flyer.classList.add(card.type);
     if(card.ttiType) flyer.classList.add('tti-'+card.ttiType);
-    flyer.innerHTML = cardSVG(card);
+    flyer.innerHTML = cardSVG(card)+'<div class="card-border"></div>';
     flyer.style.transition = 'transform .15s ease-out';
     flyer.style.transform = 'translate(-50%,-50%) scaleX(1)';
     safeTimeout(()=>{
@@ -4691,7 +4746,7 @@ function render(){
     }
   }
   const cum=document.getElementById('cumScores');
-  cum.innerHTML = PLAYER_NAMES.map((n,i)=>'<span'+(i===0?' class="me"':'')+'>'+n+(i===G.dealer?' <span class="dealer-tag">선</span>':'')+' '+won(G.coins[i])+'</span>').join('');
+  cum.innerHTML = PLAYER_NAMES.map((n,i)=>'<span'+(i===0?' class="me"':'')+'>'+n+(i===G.dealer?'<span class="dealer-tag">선</span>':'')+won(G.coins[i])+'</span>').join('');
 
   for(let i=1;i<=2;i++){
     const p=document.getElementById('opp'+i);
@@ -4842,7 +4897,7 @@ function makeCardEl(card, mini){
   const div=document.createElement('div');
   div.className='card '+card.type+(card.ttiType?' tti-'+card.ttiType:'')+(card.ppeokOwner!==undefined?' ppeok':'')+(mini?' mini':'');
   div.dataset.cardId = card.id;
-  div.innerHTML=cardSVG(card)+'<div class="c-month">'+(card.isBonus?'':card.month)+'</div>';
+  div.innerHTML=cardSVG(card)+'<div class="card-border"></div><div class="c-month">'+(card.isBonus?'':card.month)+'</div>';
   return div;
 }
 /* maxPerLine(선택): 주어지면 한 줄에 담기는 "장수"(피는 쌍피/보너스를 2장으로 셈) 합이
