@@ -104,8 +104,15 @@
   .shake-reveal-card.used{opacity:.4; filter:grayscale(60%);}
   .shake-reveal-card .c-month{font-size:6px!important; padding:0 2px!important;}
 
-  .table-area{width:100%; background:linear-gradient(160deg,var(--felt-a),var(--felt-b)); border:1px solid var(--border); border-radius:12px; padding:10px; min-height:150px; position:relative; display:flex; gap:10px;}
-  .deck-pile{flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:4px; justify-content:center;}
+  /* min-height는 바닥패 2줄(카드 높이×2 + 줄 사이 간격 1개 + 상하 패딩)이 항상 들어가는
+     크기를 --card-h(실시간 계산값) 기준으로 맞춘 것 — 1~2줄까지는 이 높이가 그대로
+     유지되고, 3줄째부터만 min-height를 넘어 자연스럽게 늘어난다. */
+  /* table-area의 gap(10→18px)은 덱-바닥패 사이 간격 전용. 덱을 오른쪽으로 더 밀어주는
+     간격은 deck-pile의 margin-left(아래)로 별도 확보한다 — 이 둘을 gap 하나로 합치면
+     "덱 위치"와 "덱-바닥패 간격"을 독립적으로 조절할 수 없다. PC/휴대폰 가로모드는 이
+     조정 대상이 아니므로 각 미디어쿼리에서 margin-left:0으로 되돌린다. */
+  .table-area{width:100%; background:linear-gradient(160deg,var(--felt-a),var(--felt-b)); border:1px solid var(--border); border-radius:12px; padding:10px; min-height:calc(var(--card-h, 62px) * 2 + 30px); position:relative; display:flex; gap:18px;}
+  .deck-pile{flex-shrink:0; margin-left:16px; display:flex; flex-direction:column; align-items:center; gap:4px; justify-content:center;}
   .deck-count{font-size:11px; color:var(--muted); font-weight:700;}
   /* 덱을 카드 여러 장이 쌓인 것처럼 입체적으로 보이도록, 남은 장수에 따라 뒤로 살짝씩
      어긋난 겹침 레이어를 몇 장 더 그려 두께감을 준다. */
@@ -117,9 +124,12 @@
   .deck-stack .card{position:absolute; top:0; left:0; margin:0; width:var(--card-w, 40px); height:var(--card-h, 62px);}
   .deck-stack .card.deck-empty{background:transparent; border:2px dashed var(--border); box-shadow:none;}
   /* 모바일 세로모드에서 바닥패가 한 줄에 7장까지 들어가 카드가 빽빽해 보이던 것을
-     6장까지만 들어가도록, 덱-바닥패 간격(위 table-area gap 8→10px)과 바닥패끼리의
-     간격(6→10px)을 살짝 늘림. */
-  .floor-cards{flex:1; display:flex; flex-wrap:wrap; gap:10px; align-content:flex-start;}
+     6장까지만 들어가도록 조정한 값. 이후 "바닥패끼리는 조금 더 촘촘하게, 덱-바닥패
+     사이/덱 위치는 더 여유있게" 요청으로 floor-cards gap을 10→8px로 줄이는 대신, 그만큼
+     6장 문턱이 다시 넘어가지 않도록 위 table-area gap(18px)과 deck-pile margin-left(16px)로
+     바닥패 쪽 가용 폭을 충분히 줄여 균형을 맞췄다(cardW 최대값 44px 기준 6장 44*6+8*5=304
+     ≤ 가용폭, 7장 44*7+8*6=356 > 가용폭이 되도록 계산). */
+  .floor-cards{flex:1; display:flex; flex-wrap:wrap; gap:8px; align-content:flex-start;}
   .floor-cards .card{width:var(--card-w, 40px); height:var(--card-h, 62px);}
 
   .card{width:40px;height:62px;border-radius:calc(var(--card-w, 40px) / 7); background:#fdfbf5; --border-w:calc(var(--card-w, 40px) * 0.05); --border-c:#e8102e; display:flex; align-items:center; justify-content:center; position:relative; box-shadow:0 2px 3px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.5); flex-shrink:0; overflow:hidden;}
@@ -188,7 +198,11 @@
   .flyer-card{position:fixed; z-index:999; pointer-events:none; transform:translate(-50%,-50%); transition:left .38s ease, top .38s ease, width .38s ease, height .38s ease; box-shadow:0 6px 14px rgba(0,0,0,.5);}
   @keyframes choosePulse{0%,100%{transform:translateY(0);} 50%{transform:translateY(-3px);}}
 
-  .human-panel{width:100%; border:1px solid transparent; border-radius:10px; padding:6px; transition:border-color .15s ease;}
+  /* 컴1/컴2 패널(.opp-panel)은 자기 턴 표시(노란 테두리) 영역 전체가 var(--panel) 배경으로
+     진하게 보이는데, 사람 패널은 배경이 없어 안쪽 human-cap(먹은 패)만 진해 보이고 나머지
+     (손패 영역)는 밝은 배경(felt) 그대로 비쳐 보였다. 패널 전체를 opp-panel과 같은 배경으로
+     맞추고, 대신 손패 영역(.hand-area)에 더 옅은 배경(--panel2)을 얹어 구역을 구분한다. */
+  .human-panel{width:100%; background:var(--panel); border:1px solid transparent; border-radius:10px; padding:6px; transition:border-color .15s ease;}
   .human-panel.active{border-color:var(--gold); box-shadow:0 0 0 1px var(--gold) inset;}
   .human-score{display:flex; flex-wrap:wrap; align-items:center; gap:5px; font-size:12px; color:var(--muted); margin-bottom:6px; padding:0 2px; position:relative;}
   .human-score-left{display:flex; align-items:center; gap:5px; flex-wrap:wrap; min-width:0; flex:1 1 auto;}
@@ -202,7 +216,7 @@
      진행돼 먹은 패 줄이 늘어나도 세로로 한없이 길어지지 않게 한다. */
   .human-body{display:flex; gap:8px; align-items:flex-start;}
   .human-body .human-cap{flex:1 1 0; min-width:0;}
-  .hand-area{flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:4px; padding:4px 2px 8px;}
+  .hand-area{flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:4px; padding:4px 2px 8px; background:var(--panel2); border-radius:9px;}
   .hand-row{display:flex; gap:4px; justify-content:center; flex-wrap:wrap;}
   .hand-row .card{width:var(--card-w, 40px); height:var(--card-h, 62px);}
 
@@ -222,7 +236,9 @@
      빈 카드처럼 보이는 문제가 있었다. */
   .cap-lines{display:flex; flex-direction:column; gap:2px;}
   .cap-empty{font-size:10px; color:var(--muted); font-style:italic; padding:2px 0;}
-  .opp-cap{margin-top:2px;}
+  /* human-cap과 동일한 박스 처리(배경/테두리) — 사람 패널의 "아직 가져온 패가 없습니다"
+     칸에는 보이는 human-cap의 테두리가 컴1/컴2에는 없어서 다르게 보였다. 통일. */
+  .opp-cap{margin-top:2px; background:var(--panel); border:1px solid var(--border); border-radius:9px; padding:7px 8px;}
   /* 컴1/컴2 패널은 폭이 좁아 기본 mini 카드(26px)로는 한 줄에 4장만 들어간다. 기기마다
      실제 CSS 뷰포트 폭이 달라(같은 "갤럭시 S26" 계열이라도 모델별로 다름) 고정 px 값으로는
      계속 어긋났다. 대신 실제 패널 폭을 JS(applyOppCardSize)로 재서 한 줄에 정확히 5장이
@@ -290,14 +306,32 @@
   .ov-primary{background:linear-gradient(180deg,#f0cf7c,var(--gold)); color:#20200a;}
   .ov-secondary{background:#3a2418; color:var(--cream); border:1px solid #5a3a24;}
 
-  /* 확대된 양쪽 열과 중앙 바닥패 공간을 확보할 수 있는 1280px부터 150% 확대 + 가로 3단 배치.
-     너비만 넓고 높이는 작은 휴대폰 가로모드는 이 규칙에서 제외해 확대로 인한 겹침/잘림을 막는다. */
-  @media (min-width:1280px) and (min-height:640px){
+  /* 확대된 양쪽 열과 중앙 바닥패 공간을 확보할 수 있는 1440px부터 150% 확대 + 가로 3단 배치.
+     min-width 문턱(1440px): body에 zoom:1.5가 걸려 있어 레이아웃 자체는 실제 뷰포트가 아니라
+     "뷰포트/1.5 - body 좌우 패딩(24px)"인 좁아진 공간 기준으로 계산된다. 6장이 들어가는 데
+     실제로 필요한 최소 폭은 #game 기준 약 922px(고정폭 col-human 390+col-opponents 200+각종
+     gap 32 + 바닥패 6장에 필요한 col-center 최소 300)이므로, 뷰포트는 최소 (922+24)×1.5≈1419px면
+     된다. 아래 #game의 max-width:960px에 실제로 "가득" 도달하려면 1476px가 필요하지만, 그건
+     여유 폭이 넉넉한 설계일 뿐 필수 조건은 아니다 — 1440px에서는 #game 실사용 폭이
+     1440/1.5-24=936px로, 960에는 못 미쳐도 922px 최소 요구치보다 14px 여유가 있어 6장이
+     그대로 들어간다. 그래서 max-width는 960 그대로 두고 문턱만 1440으로 낮췄다(더 넓은 화면에서는
+     자연히 960까지 커진다). 예전엔 문턱이 1280px이라 1280~1419px 사이 창 크기(노트북 등)에서
+     6장이 못 들어가는 문제가 있었다.
+     원래는 여기 min-height:640px 조건도 있었다("너비만 넓고 높이는 작은 휴대폰 가로모드를
+     제외"하려는 의도) — 이 3단 배치로 전환할지는 바닥패 6장이 들어갈 폭이 되는지만으로
+     결정하면 되는 문제인데, 높이 조건이 같이 걸려 있어서 폭은 충분한데 창 높이만 낮으면
+     세로모드로 떨어지는(반대로 높이만 늘리면 갑자기 PC 모드로 바뀌는) 혼란스러운 동작이
+     됐다. 애초에 이 조건이 막으려던 "휴대폰 가로모드"는 아무리 큰 기기라도 가로 폭이
+     1440px 근처까지 가지 않으므로(태블릿 가로모드조차 대부분 1366px 이하), min-width를
+     1440으로 올린 지금은 그 자체로 이미 좁은 기기를 걸러내고 있어 min-height 조건이
+     불필요해졌다. 그래서 제거하고 폭 조건 하나로만 판단하도록 정리했다. */
+  @media (min-width:1440px){
     body{ zoom:1.5; }
     /* 바닥패가 한 줄에 6장 이상 들어가도록 폭을 늘림: 원래 900px에서는 중앙 바닥패
        칸(col-center)이 278px밖에 안 남아 36px 카드가 5장까지만 들어갔다. 960px로
        늘리면 col-center가 338px가 되어 6장(36px×6+간격4px×5=236px)이 여유 있게
-       들어간다. */
+       들어간다(위 min-width 문턱 덕분에 #game이 이 문턱에서부터 이미 최소 요구치를
+       충족함이 보장된다). */
     .top-header{ max-width:960px; }
     #game{ max-width:960px; }
     .game-body{ flex-direction:row; align-items:flex-start; gap:16px; }
@@ -308,9 +342,11 @@
     .col-human{ width:390px; flex-shrink:0; order:1; }
     .col-center{ flex:1; min-width:0; order:2; }
     .floor-cards{ gap:4px; }
-    /* 위쪽 모바일 세로모드용 gap 변경(table-area 8→10px)이 이 화면까지 새어들지
-       않도록, 이 화면 전용 값을 그대로 고정해 둔다. */
-    .table-area{ gap:8px; }
+    /* 위쪽 모바일 세로모드용 gap 변경이 이 화면까지 새어들지 않도록, 이 화면 전용 값을
+       그대로 고정해 둔다. 이 화면은 카드 크기가 36×56px로 고정이므로 min-height도 그 값
+       기준(56×2+4(floor-cards gap)+20(패딩))으로 고정. */
+    .table-area{ gap:8px; min-height:136px; }
+    .deck-pile{ margin-left:0; }
     .floor-cards .card{ width:36px; height:56px; border-radius:5.14px; --border-w:1.8px; }
     .deck-stack{ width:36px; height:56px; }
     .deck-stack .card{ width:36px; height:56px; border-radius:5.14px; --border-w:1.8px; }
@@ -333,9 +369,24 @@
        6줄 기준: 6*18.4(줄 높이) + 8(기본 padding-bottom) + 테두리 ≈ 120px. */
     .log-panel{ height:120px; }
   }
-  /* 휴대폰 가로모드: 너비는 넓지만 높이가 얼마 없는 경우. 확대 없이 가로 폭을 활용한 3단
-     배치로 바꾸되, 화면 높이를 넘어서면 겹치지 않고 스크롤되도록 한다. */
-  @media (orientation:landscape) and (max-height:560px){
+  /* 중간 폭(모바일 가로모드 포함) 3단 배치: 확대 없이 가로 폭을 활용해 PC용 3단 배치와
+     같은 좌(사람)/중(바닥)/우(컴퓨터) 구조를 쓰되 확대는 하지 않는다. 화면 높이를 넘어서면
+     겹치지 않고 스크롤되도록 한다.
+     이 레이아웃 전환은 오직 폭으로만 결정한다(원래는 orientation:landscape와
+     max-height:560px 조건도 있었는데, 폭은 이미 충분한데 창 높이가 조금만 커도 이 3단
+     배치를 못 받고 세로모드로 떨어지는 문제가 있어 제거했다 — 바닥패 6장이 들어가는지는
+     순전히 폭 문제이므로 높이/방향과는 무관해야 한다).
+     min-width:780px 조건: 이 화면의 바닥패 카드 폭(--card-w)은 화면 방향과 무관하게 기기
+     짧은 변 기준으로 계산되는데(applyHandCardSize), 이 화면에서는 그 카드가 col-center의
+     좁은 폭(사람 패널 220px+컴퓨터 패널 200px을 뺀 나머지) 안에 6장씩 들어가야 한다. 카드
+     폭이 대략 28~42px인 실제 기기 범위에서 6장이 들어가려면 뷰포트 폭이 대략 710~810px은
+     되어야 하는데(6*cardW + gap 30px + 안쪽 여백들 ≈ cardW*7+512), 그 밑으로 좁으면 이 3단
+     배치로는 6장이 다 안 들어가고 줄바꿈되어 빽빽해 보인다. 그런 좁은 폭에서는 차라리 이
+     배치를 포기하고 세로모드와 같은 1단 배치(전체 폭을 바닥패에 그대로 씀)로 되돌리는 게
+     낫다고 판단해 문턱을 뒀다.
+     max-width:1439px 조건: 위 PC용 미디어쿼리(min-width:1440px)와 폭 기준으로 서로
+     배타적이 되도록 상한을 뒀다 — 1440px 이상은 항상 확대된 PC 3단 배치가 맡는다. */
+  @media (min-width:780px) and (max-width:1439px){
     body{ padding:8px 10px 20px; }
     #game{ max-width:900px; }
     .top-header{ max-width:900px; }
@@ -357,10 +408,12 @@
     .main-row{ display:contents; }
     .col-human{ position:absolute; left:0; top:0; width:220px; }
     .col-center{ grid-column:2; grid-row:1; min-width:0; }
-    /* 위쪽 모바일 세로모드용 gap 변경(table-area 8→10px, floor-cards 6→10px)이
-       이 화면까지 새어들지 않도록, 이 화면 전용 값을 그대로 고정해 둔다. */
-    .table-area{ min-height:110px; padding:7px; gap:8px; }
+    /* 위쪽 모바일 세로모드용 gap/margin 변경이 이 화면까지 새어들지 않도록, 이 화면
+       전용 값을 그대로 고정해 둔다. min-height는 이 화면의 패딩(7px)·floor-cards
+       gap(6px) 기준으로 2줄이 들어가는 높이. */
+    .table-area{ min-height:calc(var(--card-h, 62px) * 2 + 20px); padding:7px; gap:8px; }
     .floor-cards{ gap:6px; }
+    .deck-pile{ margin-left:0; }
     .log-panel-wrap{ grid-column:2; grid-row:2; margin:0; width:auto; }
     .log-panel{ height:120px; margin:0; }
     /* 로그 복사 버튼: 기본 top:15px는 로그 1번째 줄(패딩8px+줄높이18.4px) 아래쪽에
@@ -545,7 +598,7 @@
 
         <div class="col-human">
           <div class="human-panel" id="humanPanel">
-            <div class="human-score"><span class="human-score-left"><span id="humanLabel">나의 점수</span><b id="humanScoreVal">0점</b><span id="myShakeBadge"></span><span id="humanDetail" style="color:var(--muted);"></span></span><span class="human-score-right"><span id="autoPlayBadge" style="display:none; background:rgba(0,0,0,.85); color:var(--gold); border-radius:8px; padding:2px 8px; font-size:12px; font-weight:700;"></span><span id="humanHandCount" style="font-weight:400; color:var(--muted); font-size:11px; background:rgba(8,20,42,.85); border-radius:6px; padding:1px 4px;"></span></span></div>
+            <div class="human-score"><span class="human-score-left"><span id="humanLabel">나의 점수</span><b id="humanScoreVal">0점</b><span id="myShakeBadge"></span><span id="humanDetail" style="color:var(--muted);"></span></span><span class="human-score-right"><span id="autoPlayBadge" style="display:none; background:rgba(0,0,0,.85); color:var(--gold); border-radius:8px; padding:2px 8px; font-size:12px; font-weight:700;"></span><span id="humanHandCount" class="opp-hcountcell" style="margin-left:0;"></span></span></div>
             <div class="human-body">
               <div class="human-cap" id="humanCap"></div>
               <div class="hand-area" id="handRow"></div>
