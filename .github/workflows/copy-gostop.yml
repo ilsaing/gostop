@@ -1,31 +1,44 @@
-name: Copy gostop.html to index.html
+name: Deploy GoStop to GitHub Pages
 
 on:
   push:
+    branches:
+      - main # 혹은 마스터 브랜치 이름 (master 등)
     paths:
-      - gostop.html
-      - .github/workflows/copy-gostop.yml
+      - 'gostop.html' # gostop.html이 변경될 때만 실행
 
+# GitHub Pages 배포를 위한 권한 설정
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+# 동시 배포 시 충돌 방지
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
-  copy:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Copy file
+      - name: Copy gostop to index
         run: cp gostop.html index.html
 
-      - name: Commit and push if changed
-        run: |
-          if git diff --quiet -- index.html; then
-            echo "index.html is already up to date"
-            exit 0
-          fi
-          git config user.name "ilsaing"
-          git config user.email "kanna2425@naver.com"
-          git add index.html
-          git commit -m "Copy gostop.html to index.html"
-          git push
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.' # 현재 폴더 전체를 배포 (index.html 포함)
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
