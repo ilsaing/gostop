@@ -494,8 +494,8 @@
         <b>나가리</b> — 카드가 다 소진될 때까지 아무도 3점을 넘기지 못하면 그 판은 무효(나가리)가 되어 금액 변동 없이 기존 순서대로 다음 판을 진행합니다. 고를 부른 사람이 이후 추가 득점 없이 패가 소진되면, 그 사람의 점수도 무효로 처리됩니다(추가 득점이 있었다면 그대로 자동 승리). 나가리가 나오면 다음 판 점수가 2배가 되며, 나가리가 연속으로 나오면 2배·4배·8배… 로 계속 누적됩니다. 이후 어느 판이든 승부가 나면 그 판에 누적 배율이 적용되고, 배율은 다시 1배로 초기화됩니다.<br><br>
 
         <div class="rule-group-title">▶ 피 보너스 규칙 (뻑·따닥·쪽·싹쓸이)</div>
-        <b>뻑</b> — 바닥에 이미 있는 카드, 내가 낸 카드, 이어서 뽑은 카드까지 월이 모두 같으면 뻑입니다. 이 경우 3장 모두 가져가지 못하고 바닥에 그대로 묶입니다. 나중에 그 월의 마지막 한 장으로 묶인 3장을 가져가게 되면, 그 사람은 다른 두 명에게서 피를 1장씩 받습니다. 한 사람이 그 판에서 뻑을 3번 만들면, 그 자리에서 3점으로 즉시 승리합니다.<br><br>
-        <b>따닥</b> — 바닥에 같은 월이 2장 있을 때, 낸 패로 1장을 가져오고 이어서 뽑은 패도 같은 월이라 나머지 1장까지 가져오게 되면, 다른 두 사람에게서 피를 1장씩 받습니다.<br><br>
+        <b>뻑</b> — 바닥에 이미 있는 카드, 내가 낸 카드, 이어서 뽑은 카드까지 월이 모두 같으면 뻑입니다. 이 경우 3장 모두 가져가지 못하고 바닥에 그대로 묶입니다. 나중에 그 월의 마지막 한 장으로 묶인 3장을 가져가게 되면, 그 사람은 다른 두 명에게서 피를 1장씩 받습니다. 단, 손에 남은 마지막 패를 낸 턴에는 뻑을 완성해도 피 보상은 없습니다. 한 사람이 그 판에서 뻑을 3번 만들면, 그 자리에서 3점으로 즉시 승리합니다.<br><br>
+        <b>따닥</b> — 바닥에 같은 월이 2장 있을 때, 낸 패로 1장을 가져오고 이어서 뽑은 패도 같은 월이라 나머지 1장까지 가져오게 되면, 다른 두 사람에게서 피를 1장씩 받습니다. 단, 손에 남은 마지막 패를 낸 턴에는 따닥 피 보상이 없습니다.<br><br>
         <b>쪽</b> — 바닥에 없는 월의 패를 내서 그냥 놓였는데, 이어서 뽑은 패가 낸 패와 같은 월이라 바로 가져가게 되면, 다른 두 명에게서 피를 1장씩 받습니다. 단, 손에 남은 마지막 패를 낸 경우에는 적용되지 않습니다.<br><br>
         <b>싹쓸이(쓸)</b> — 패를 내어 먹은 뒤 바닥에 카드가 한 장도 남지 않으면, 다른 두 명에게서 피를 1장씩 받습니다. 단, 손에 남은 마지막 패를 낸 경우에는 적용되지 않습니다.<br><br>
 
@@ -3548,6 +3548,9 @@ function logPlayResult(playerIdx, card, res, isDrawn){
    완성이 아니면 즉시 onDone. 호출부는 캡처 스윕 애니메이션이 끝난 뒤 이 함수를 불러야 한다. */
 function resolvePpeokBonus(playerIdx, ppeokPending, onDone){
   if(!ppeokPending){ onDone(); return; }
+  // 마지막 손패를 낸 턴에는 뻑을 완성하더라도 피 보상을 주지 않는다.
+  // hasMoreTurns()는 손패가 모두 소진됐는지뿐 아니라 폭탄 스킵 턴도 함께 확인한다.
+  if(!hasMoreTurns(playerIdx)){ onDone(); return; }
   const gains = ttadakGains(playerIdx);
   if(gains.length>0){
     addLog('&nbsp;&nbsp;↳ 뻑 획득: '+gains.map(i=>PLAYER_NAMES[i]).join(', ')+'(으)로부터 피 1장씩 받음');
@@ -4452,7 +4455,7 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
     if(playerIdx===HUMAN) G.phase='resolving';
     resolvePlayAsync(G, playerIdx, drawn, (res)=>{
       logPlayResult(playerIdx, drawn, res, true);
-      const isTtadak = !!(handCard && handRes.captured && res.captured && drawn.month===handCard.month);
+      const isTtadak = !!(handCard && handRes.captured && res.captured && drawn.month===handCard.month && hasMoreTurns(playerIdx));
       const isJjok = !!(handCard && !handRes.captured && !handRes.pendingMatches && res.captured && drawn.month===handCard.month && hasMoreTurns(playerIdx));
       const finish=()=>{
         clearBonusFlyers();
