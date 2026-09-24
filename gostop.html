@@ -277,6 +277,13 @@
     padding:14px 26px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.55), 0 0 0 4px rgba(233,154,61,.15);
     opacity:0; transition:opacity .25s ease, transform .25s ease;}
   #bonusToast.show{opacity:1; transform:translate(-50%,-50%);}
+  /* 공통 팝업 폭: 모바일 세로 260px, 모바일 가로 및 PC 320px */
+  @media (max-width:779px){
+    #goToast, #bonusToast, #dealToast, #chongtongToast{width:260px; box-sizing:border-box;}
+  }
+  @media (min-width:780px){
+    #goToast, #bonusToast, #dealToast, #chongtongToast{width:320px; box-sizing:border-box;}
+  }
   #bonusToast .bonus-toast-name{color:var(--cream); font-size:14px; font-weight:700; letter-spacing:1px;}
   #bonusToast .bonus-toast-main{color:#ffb04f; font-size:27px; font-weight:900; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,.5); margin:2px 0;}
   #bonusToast .bonus-toast-sub{color:#ffd39a; font-size:12.5px; font-weight:700; white-space:nowrap;}
@@ -2694,68 +2701,117 @@ function assessGoStopFactors(playerIdx){
   // 바닥에 뻑(3장이 묶인 더미)이 있다면, 그 월의 마지막 한 장을 누가 쥐고 있느냐에 따라 유불리가 갈린다.
   // 무조건 위험한 게 아니라, 내가 그 한 장을 들고 있으면 오히려 언제든 쓸어올 수 있는 큰 기회다.
   const ppeokMonths = [...new Set(G.floor.filter(c=>c.ppeokOwner!==undefined).map(c=>c.month))];
-  const unclaimedPpeokMonths = ppeokMonths.filter(m=>!hand.some(c=>c.month===m));
+  const bonusCaptured = [0,1,2].some(i=>G.captured[i].some(c=>c.isBonus));
+  const bonusIsRisk = !bonusCaptured && !hand.some(c=>c.isBonus);
   // 보너스 카드가 아직 아무에게도 캡처되지 않았다면(=게임에 남아있다면), 뻑과 마찬가지로
   // 누가 쥐고 있느냐로 유불리가 갈린다. 내가 쥐고 있으면 곧 피 2장을 추가로 확보할 기회이고,
   // 아니라면(상대 손패나 덱 어딘가에 있다면) 상대가 그 이득을 볼 위험으로 취급한다.
-  const bonusCaptured = [0,1,2].some(i=>G.captured[i].some(c=>c.isBonus));
-  const bonusIsRisk = !bonusCaptured && !hand.some(c=>c.isBonus);
   let ppeokMineBonus = 0;
   ppeokMonths.forEach(m=>{
     if(hand.some(c=>c.month===m)) ppeokMineBonus += 0.3; // 내가 쥐고 있다 — 강력한 추가 기대 점수
   });
   if(!bonusCaptured && hand.some(c=>c.isBonus)) ppeokMineBonus += 0.3;
 
+  /* 상대의 실제 손패는 보지 않는다. 대신 공개된 카드로 남아 있는 같은 월 카드의 수와
+     상대 손패 장수를 이용해 "다음 자기 턴에 이 바닥 패를 먹을 가능성"을 보수적으로 추정한다.
+     고/스톱 판단에서는 이 가능성이 있는 상태에서 실제 점수 증가량을 계산해, 고를 안 한 상대는
+     +3점 이상, 이미 고를 한 상대는 +1점 이상인 경우만 "즉시 스톱 위협"으로 강하게 반영한다.
+     피도 같은 기준을 사용하므로, 8피→9피처럼 점수가 나지 않는 증가는 즉시 위협으로 취급하지 않는다. */
+  function opponentImmediateScoreThreat(playerIdx, oppIdx){
+    const cap = G.captured[oppIdx];
+    const currentScore = computeScore(cap).total;
+    const alreadyGo = G.goCount[oppIdx]>0;
+    const requiredGain = alreadyGo ? 1 : 3;
+    const allCaptured = [0,1,2].flatMap(i=>G.captured[i]||[]);
+    const floor = G.floor||[];
+    const ownHand = G.hands[playerIdx]||[];
+    const knownCards = allCaptured.concat(floor, ownHand);
+    const knownIds = new Set(knownCards.map(c=>c.id));
+    const unknownCount = Math.max(0, 48-knownIds.size);
+    const oppHandSize = (G.hands[oppIdx]||[]).length;
+    const comb = (n,k)=>{
+      if(k<0 || k>n) return 0;
+      k=Math.min(k,n-k);
+      let v=1;
+      for(let j=1;j<=k;j++) v=v*(n-k+j)/j;
+      return v;
+    };
+    const probabilityHasType = (count)=>{
+      if(count<=0 || oppHandSize<=0 || unknownCount<=0) return 0;
+      if(count>=unknownCount) return 1;
+      return 1-comb(unknownCount-count,oppHandSize)/Math.max(comb(unknownCount,oppHandSize),1);
+    };
+    const typeKey = c=>[c.type,c.ttiType||'',c.bird?1:0,c.flexible?1:0].join('|');
+    let best=0;
+    const handledPpeokMonths = new Set();
+
+    floor.forEach(f=>{
+      if(f.isBonus) return;
+      let take;
+      if(f.ppeokOwner!==undefined){
+        if(handledPpeokMonths.has(f.month)) return;
+        handledPpeokMonths.add(f.month);
+        take = floor.filter(x=>x.month===f.month && x.ppeokOwner!==undefined);
+        const bonus = floor.find(x=>x.isBonus && x.ppeokMonth===f.month);
+        if(bonus) take = take.concat([bonus]);
+      } else {
+        take = [f];
+      }
+
+      // 현재 공개된 정보로 해당 월에서 아직 보이지 않는 "정확한 카드 타입"을 역산한다.
+      // 상대 손패를 직접 들여다보지 않고, 그 카드가 상대 손패에 있을 가능성을 이용한다.
+      const hiddenTypes = hiddenCardTypesForMonth(f.month, allCaptured, floor, ownHand);
+      if(!hiddenTypes.length) return;
+      const groups = new Map();
+      hiddenTypes.forEach(t=>{
+        const k=typeKey(t);
+        if(!groups.has(k)) groups.set(k,{card:t,count:0});
+        groups.get(k).count++;
+      });
+
+      groups.forEach(({card:match,count})=>{
+        const handProb = probabilityHasType(count);
+        const remainingUnknown = Math.max(1, unknownCount-oppHandSize);
+        const deckProb = G.deck.length>0 ? Math.min(1, count/remainingUnknown) : 0;
+        const captureProb = Math.min(1, handProb + (1-handProb)*deckProb);
+        if(captureProb<=0) return;
+
+        // 실제로 그 짝을 들고/뒤집어 먹는 경우를 가정해 "새로 생기는 점수"를 계산한다.
+        // 따라서 피 8→9처럼 점수가 늘지 않는 경우는 여기서 자동으로 탈락한다.
+        const afterScore = computeScore(cap.concat(take, [match])).total;
+        const gain = afterScore-currentScore;
+        if(gain<requiredGain) return;
+
+        // +3점 이상(고 전) / +1점 이상(고 후)의 실제 점수 증가를 기본 축으로 하고,
+        // 5점짜리 고도리처럼 한 번에 큰 점수가 나는 경우는 위험도를 조금 더 높인다.
+        const certaintyBoost = gain>=5 ? 1.35 : (gain>=3 ? 1.15 : 1);
+        const threat = gain*captureProb*certaintyBoost;
+        if(threat>best) best=threat;
+      });
+    });
+    return best;
+  }
+
   let oppThreat = 0;
   for(let i=0;i<3;i++){
     if(i===playerIdx) continue;
     let threat = computeScore(G.captured[i]).total;
-    const baseScore = threat; // +3 보정 전의 순수 총점(피 위협 계산에 쓸 기준값)
-    // 이미 고를 부른 상대는 다음 턴 바로 끝낼 수 있어 더 위험한 데다, 고를 부를 만큼
-    // 손에 남은 패도 좋을 가능성이 크다고 보수적으로 본다(2→3).
+    // 기존 총점/고 상태 위협은 그대로 유지한다. 아래의 "즉시 스톱 위협"은 이 값과 별개로
+    // 다음 턴 실제 득점 가능성을 추가하는 보정이라 기존 피/광박·피박 판단과 상호 배타적으로 만들지 않는다.
     const alreadyGoOpp = G.goCount[i]>0;
     if(alreadyGoOpp) threat += 3;
-    // 상대가 "이미 먹은 것"만 보지 말고, 바닥에 지금 노출된 카드 중 그 상대가 가져가면
-    // 즉시 문턱을 넘는 카드(예: 고도리 2장을 먹었는데 3번째 새 열끗이 바닥에 있음)가
-    // 있는지 본다. 사소한 피 근접 정도는 잡음이 되므로 확실히 큰 위험(문턱 이상)만 반영한다.
-    let imminentJump = 0;
-    G.floor.forEach(f=>{ if(f.isBonus) return; const jump = scoreProximityValue(G.captured[i], [f], null, i); if(jump>imminentJump) imminentJump = jump; });
-    // 피는 한 판에 워낙 많이 풀려 획득이 매우 쉬우므로, 바닥에 당장 짝이 보이는지와 무관하게
-    // 피 장수만으로도 확실한 위협을 판단한다. 총점(baseScore)에는 이미 피 자체가 10장을
-    // 넘겨 기여한 점수도 섞여 있을 수 있으므로, 그 몫(pointsFromPiSoFar)을 따로 빼서
-    // "피 이외의 다른 패로 확보해 둔 점수"(otherScoreCapped, 최대 2)만 뽑아 쓴다 — 그래야
-    // 피 장수가 늘수록 총점도 같이 늘어 시작점이 계속 앞당겨지는 자기참조 오류가 안 생긴다.
-    const oppPiNow = G.captured[i].filter(c=>c.type==='pi').length + G.captured[i].filter(c=>c.type==='ssangpi').length*2;
-    const pointsFromPiSoFar = Math.max(0, oppPiNow-9);
-    const otherScoreCapped = Math.min(2, Math.max(0, baseScore - pointsFromPiSoFar));
-    let piJump = 0;
-    // 시작점(9-otherScoreCapped: "3점 문턱까지 남은 점수"만큼 앞당김)은 두 경우 모두 같은
-    // 식을 쓴다 — 이미 고를 부른 상대는 총점이 이미 3점 이상이라 otherScoreCapped가 대부분
-    // 상한(2)에 걸려 결국 7장부터로 계산되지만, 드물게 그 점수가 대부분 피 자체에서 나온
-    // 경우(otherScoreCapped가 2 미만)라면 시작점이 자연스럽게 더 늦어질 수도 있다. 다만 값
-    // 자체(기준 3.5 vs 4)는 이미 고를 부를 만큼 손패 전체가 좋았을 가능성을 반영해 다르게 준다.
-    const start = 9 - otherScoreCapped;
-    if(oppPiNow>=start){
-      const step = Math.min(2, oppPiNow-start);
-      piJump = (alreadyGoOpp ? 4 : 3.5) + step*1.5;
-    }
-    if(piJump>imminentJump) imminentJump = piJump;
-    // 12차 튜닝: 뻑 더미(내가 못 쥔 것)·보너스 카드(아무도 못 쥔 것)의 위험도 같은 방식(상대별
-    // scoreProximityValue + 최댓값 갱신)으로 반영한다. 예전엔 이 둘을 루프 밖에서 이미 확정된
-    // 단일 oppThreat에 고정 상수("+2")로 그냥 더했는데, 그러면 ①실제로 그 카드가 어느 상대에게
-    // 더 위험한지(예: 피 10장 문턱이 코앞인 상대) 구분이 안 되고 ②뻑(4장 뭉치)과 보너스(쌍피
-    // 1장)를 똑같은 크기로 취급하는 두 가지 문제가 있었다. 순수 휴리스틱 비대칭 자기대국
-    // (N=30000, z=4.18, mean=+0.072/판)으로 검증 후 채택.
-    unclaimedPpeokMonths.forEach(m=>{
-      const pile = G.floor.filter(f=>f.month===m);
-      const jump = scoreProximityValue(G.captured[i], pile, null, i);
-      if(jump>imminentJump) imminentJump = jump;
-    });
+
+    // 상대 손패는 보지 않고, 공개 정보와 카드 잔존 가능성으로 다음 턴 득점 가능성을 추정한다.
+    // 고를 안 한 상대는 +3점 이상, 이미 고를 한 상대는 +1점 이상일 때만 즉시 위협으로 본다.
+    const immediateThreat = opponentImmediateScoreThreat(playerIdx, i);
+    if(immediateThreat>0) threat += immediateThreat;
+    // 보너스 카드 자체는 일반 월 카드처럼 "짝"으로 추적할 수 없으므로 기존의 보너스 위험 신호를 유지한다.
+    // 뻑 더미의 점수 위협은 위의 공통 즉시 득점 계산에 포함되므로 별도로 중복 가산하지 않는다.
     if(bonusIsRisk){
-      const jump = scoreProximityValue(G.captured[i], [{type:'ssangpi'}], null, i);
-      if(jump>imminentJump) imminentJump = jump;
+      const bonusJump = scoreProximityValue(G.captured[i], [{type:'ssangpi'}], null, i);
+      if(bonusJump>=3) threat += bonusJump;
     }
-    if(imminentJump >= 3) threat += imminentJump;
+
     if(threat>oppThreat) oppThreat = threat;
   }
   // 라운드가 막판(덱이 얇음)으로 갈수록 상대의 oppThreat는 (다들 점수가 쌓여서) 자연히
