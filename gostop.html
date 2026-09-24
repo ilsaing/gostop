@@ -9,7 +9,7 @@
 <style>
   :root{
     --felt-a:#12305a; --felt-b:#0a1f3d; --felt-hi:#1c4a7a;
-    --panel:#0d2140; --panel2:#122e52;
+    --panel:#0b1d38; --panel2:#122e52;
     --panel-dark:#0a1830; --panel-darker:#08142a;
     --border:#1c3555; --gold:#e3b94f; --cream:#f3ecd8; --muted:#8fa3c2;
     --hong:#c23b3b; --cho:#3e8f4a; --cheong:#3b6fc2; --rain:#8a5cd1;
@@ -22,13 +22,13 @@
   }
   [data-theme="wine"]{
     --felt-a:#5a1f2e; --felt-b:#3d1420; --felt-hi:#7a2c3f;
-    --panel:#401826; --panel2:#521f31;
+    --panel:#38131f; --panel2:#521f31;
     --panel-dark:#300f1a; --panel-darker:#280c15;
     --border:#5a2333; --muted:#c29aa5;
   }
   [data-theme="charcoal"]{
     --felt-a:#3a3a3f; --felt-b:#232326; --felt-hi:#4a4a50;
-    --panel:#2a2a2e; --panel2:#333338;
+    --panel:#232327; --panel2:#333338;
     --panel-dark:#1c1c1f; --panel-darker:#151517;
     --border:#45454b; --muted:#a3a3a8;
   }
@@ -202,7 +202,7 @@
      진하게 보이는데, 사람 패널은 배경이 없어 안쪽 human-cap(먹은 패)만 진해 보이고 나머지
      (손패 영역)는 밝은 배경(felt) 그대로 비쳐 보였다. 패널 전체를 opp-panel과 같은 배경으로
      맞추고, 대신 손패 영역(.hand-area)에 더 옅은 배경(--panel2)을 얹어 구역을 구분한다. */
-  .human-panel{width:100%; background:var(--panel); border:1px solid transparent; border-radius:10px; padding:6px; transition:border-color .15s ease;}
+  .human-panel{width:100%; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:6px; transition:border-color .15s ease;}
   .human-panel.active{border-color:var(--gold); box-shadow:0 0 0 1px var(--gold) inset;}
   .human-score{display:flex; flex-wrap:wrap; align-items:center; gap:5px; font-size:12px; color:var(--muted); margin-bottom:6px; padding:0 2px; position:relative;}
   .human-score-left{display:flex; align-items:center; gap:5px; flex-wrap:wrap; min-width:0; flex:1 1 auto;}
