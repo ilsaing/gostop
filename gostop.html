@@ -269,7 +269,7 @@
   #goToast.show{opacity:1; transform:translate(-50%,-50%);}
   #goToast .go-toast-name{color:var(--cream); font-size:14px; font-weight:700; letter-spacing:1px;}
   #goToast .go-toast-main{color:#ff5c3c; font-size:30px; font-weight:900; letter-spacing:2px; text-shadow:0 2px 0 rgba(0,0,0,.5); margin:2px 0;}
-  #goToast .go-toast-sub{color:#ffb199; font-size:12.5px; font-weight:700; white-space:nowrap;}
+  #goToast .go-toast-sub{color:#ffb199; font-size:12.5px; font-weight:700;}
   @keyframes oppGoPulse{0%{box-shadow:0 0 0 3px #ff5c3c, 0 2px 3px rgba(0,0,0,.4);} 100%{box-shadow:0 2px 3px rgba(0,0,0,.4);}}
   .opp-panel.go-pulse{animation:oppGoPulse 1.4s ease;}
   #bonusToast{position:fixed; left:50%; top:22%; transform:translate(-50%,-40%); z-index:80; pointer-events:none;
@@ -286,7 +286,7 @@
   }
   #bonusToast .bonus-toast-name{color:var(--cream); font-size:14px; font-weight:700; letter-spacing:1px;}
   #bonusToast .bonus-toast-main{color:#ffb04f; font-size:27px; font-weight:900; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,.5); margin:2px 0;}
-  #bonusToast .bonus-toast-sub{color:#ffd39a; font-size:12.5px; font-weight:700; white-space:nowrap;}
+  #bonusToast .bonus-toast-sub{color:#ffd39a; font-size:12.5px; font-weight:700;}
   /* 판이 시작될 때 카드를 막 나눠준 직후 잠깐 띄우는 안내 배너 — 컴퓨터가 곧바로 진행해버려
      초기 배분을 놓치지 않도록 텀을 준다. */
   #dealToast{position:fixed; left:50%; top:22%; transform:translate(-50%,-40%); z-index:80; pointer-events:none;
@@ -294,8 +294,8 @@
     padding:14px 26px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.55), 0 0 0 4px rgba(227,185,79,.15);
     opacity:0; transition:opacity .25s ease, transform .25s ease;}
   #dealToast.show{opacity:1; transform:translate(-50%,-50%);}
-  #dealToast .deal-toast-main{color:var(--gold); font-size:19px; font-weight:900; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,.5); margin:2px 0; white-space:nowrap;}
-  #dealToast .deal-toast-sub{color:var(--cream); font-size:12.5px; font-weight:700; white-space:nowrap;}
+  #dealToast .deal-toast-main{color:var(--gold); font-size:19px; font-weight:900; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,.5); margin:2px 0;}
+  #dealToast .deal-toast-sub{color:var(--cream); font-size:12.5px; font-weight:700;}
   /* 총통이 나면 그 4장을 다 같이 확인할 수 있도록 잠깐 공개하는 배너 */
   #chongtongToast{position:fixed; left:50%; top:20%; transform:translate(-50%,-40%); z-index:85; pointer-events:none;
     background:linear-gradient(180deg,var(--felt-a),var(--felt-b)); border:2px solid var(--gold); border-radius:14px;
@@ -303,7 +303,7 @@
     opacity:0; transition:opacity .25s ease, transform .25s ease;}
   #chongtongToast.show{opacity:1; transform:translate(-50%,-50%);}
   #chongtongToast .chongtong-toast-name{color:var(--cream); font-size:14px; font-weight:700; letter-spacing:1px;}
-  #chongtongToast .chongtong-toast-main{color:var(--gold); font-size:20px; font-weight:900; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,.5); margin:2px 0; white-space:nowrap;}
+  #chongtongToast .chongtong-toast-main{color:var(--gold); font-size:20px; font-weight:900; letter-spacing:1px; text-shadow:0 2px 0 rgba(0,0,0,.5); margin:2px 0;}
   #chongtongToast .chongtong-toast-cards{display:flex; gap:4px; justify-content:center; margin-top:8px;}
   #overlayCard{background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--gold); border-radius:14px; padding:24px 22px; text-align:center; max-width:340px; width:100%; box-shadow:0 14px 30px rgba(0,0,0,.5);}
   #overlayTitle{font-family:'Noto Sans KR',sans-serif; font-weight:900; font-size:21px; color:var(--gold); margin-bottom:10px;}
