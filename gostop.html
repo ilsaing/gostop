@@ -540,8 +540,8 @@
     <button type="button" class="theme-swatch" data-theme="charcoal" onclick="uiSetTheme('charcoal')" style="background:linear-gradient(135deg,#3a3a3f,#232326);" title="차콜"></button>
   </div>
   <div id="labelSettingRow" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-    <label class="coin-label" style="margin-bottom:0;">카드 라벨 (광/열끗/띠 등 글자 표시)</label>
-    <button type="button" id="galleryBtn" onclick="uiOpenGallery()" style="display:none; background:var(--panel2); border:1.5px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 16px; font-size:12.5px; font-weight:700; cursor:pointer; align-items:center; gap:5px;"><svg width="13" height="20" viewBox="0 0 44 62" preserveAspectRatio="none" style="flex-shrink:0;"><defs><clipPath id="galleryIconClip2"><rect x="1" y="1" width="42" height="60" rx="8"/></clipPath></defs><rect x="1" y="1" width="42" height="60" rx="8" fill="#ed1a21" stroke="#171310" stroke-width="2"/><g clip-path="url(#galleryIconClip2)"><ellipse cx="21.61" cy="19.49" rx="15.44" ry="14.20" fill="#ffffff" stroke="#171310" stroke-width="0.6"/><path d="M0,36.67 L0,62 L44,62 L44,40.10 L42.93,39.43 L41.41,38.62 L38.99,37.57 L34.37,36.05 L30.03,35.10 L24.23,34.33 L21.58,34.43 L19.61,34.33 L18.42,34.14 L14.59,34.14 L10.70,34.38 L7.21,34.81 L4.39,35.33 L1.69,36.05 Z" fill="#171310"/></g></svg>갤러리</button>
+    <label class="coin-label" style="margin-bottom:0;">카드 라벨</label>
+    <button type="button" id="galleryBtn" onclick="uiOpenGallery()" style="display:inline-flex; background:var(--panel2); border:1.5px solid var(--gold); color:var(--gold); border-radius:8px; padding:6px 16px; font-size:12.5px; font-weight:700; cursor:pointer; align-items:center; gap:5px;"><svg width="13" height="20" viewBox="0 0 44 62" preserveAspectRatio="none" style="flex-shrink:0;"><defs><clipPath id="galleryIconClip2"><rect x="1" y="1" width="42" height="60" rx="8"/></clipPath></defs><rect x="1" y="1" width="42" height="60" rx="8" fill="#ed1a21" stroke="#171310" stroke-width="2"/><g clip-path="url(#galleryIconClip2)"><ellipse cx="21.61" cy="19.49" rx="15.44" ry="14.20" fill="#ffffff" stroke="#171310" stroke-width="0.6"/><path d="M0,36.67 L0,62 L44,62 L44,40.10 L42.93,39.43 L41.41,38.62 L38.99,37.57 L34.37,36.05 L30.03,35.10 L24.23,34.33 L21.58,34.43 L19.61,34.33 L18.42,34.14 L14.59,34.14 L10.70,34.38 L7.21,34.81 L4.39,35.33 L1.69,36.05 Z" fill="#171310"/></g></svg>갤러리</button>
   </div>
   <div class="theme-row" id="labelRow">
     <button type="button" class="opt-btn" data-label="show" onclick="uiSetLabelPref(true)">표시</button>
@@ -4127,6 +4127,9 @@ function checkMidRoundChongtong(playerIdx){
   });
   return true;
 }
+function humanHandAreaAnchor(){
+  return rectAnchor(document.getElementById('handRow')) || panelAnchor(HUMAN);
+}
 function playBonusHandCard(playerIdx, card){
   if(!G || G.roundOver) return;
   // 보너스 카드는 정상 턴에 앞서 내는 사전 동작이다: 바닥에 내려놓고, 덱 한 장을 손패로 받은 뒤
@@ -4139,15 +4142,25 @@ function playBonusHandCard(playerIdx, card){
   safeTimeout(()=>{
     if(!G || G.roundOver) return;
     const drawnCard = G.deck.pop();
-    if(drawnCard){
+    const finishDraw = ()=>{
+      G.bonusPending = {cardId: card.id, playerIdx};
+      safeTimeout(()=>proceedTurn(), 500);
+    };
+    if(!drawnCard){ render(); finishDraw(); return; }
+    // 덱에서 손패로 들어오는 것도 다른 카드 이동과 마찬가지로 실제로 날아가는 모습을 보여준다.
+    // 상대(AI)의 경우 손패 내용은 비공개 정보이므로 뒷면인 채로 손패 자리(패 N장 칸)까지만
+    // 날아가게 하고, 내 카드일 때만 앞면을 보여주며 손패 영역으로 날아간다.
+    const from = deckAnchor();
+    const to = playerIdx===HUMAN ? humanHandAreaAnchor() : oppHandOriginAnchor(playerIdx);
+    flyCardVisual(drawnCard, from, to, 380, ()=>{
+      if(!G || G.roundOver) return;
       drawnCard.bonusDrawn = true; // 손패에서 어떤 카드가 방금 뽑힌 건지 표시해 준다(카드를 내면 자연히 사라짐)
       G.hands[playerIdx].push(drawnCard);
       addLog(PLAYER_NAMES[playerIdx]+': 덱에서 한 장을 손패로 가져옵니다.');
       if(checkMidRoundChongtong(playerIdx)) return;
-    }
-    render();
-    G.bonusPending = {cardId: card.id, playerIdx};
-    safeTimeout(()=>proceedTurn(), 500);
+      render();
+      finishDraw();
+    }, playerIdx!==HUMAN);
   }, 500);
 }
 function afterHandResolved(playerIdx, card, handRes, playedFlyer, playedTarget){
