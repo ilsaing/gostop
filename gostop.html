@@ -4894,7 +4894,10 @@ function shakeBadgeForMonth(i, month){
   badge.textContent = '흔들';
   wrap.appendChild(badge);
   // 흔든 패는 공개 정보이므로 손패에서 사용한 뒤에도 갤러리처럼 흐리게 계속 표시한다.
-  const revealedCards = (G.shakenCards[i]||[]).filter(c=>c.month===month);
+  // 손패 배열에 들어있던 순서(딜링 순서라 의미 없음) 대신, 광→열끗→띠→피 순으로 정렬해서 보여준다.
+  const SHAKE_TYPE_ORDER = {gwang:0, yeol:1, tti:2, pi:3, ssangpi:3};
+  const revealedCards = (G.shakenCards[i]||[]).filter(c=>c.month===month)
+    .slice().sort((a,b)=>(SHAKE_TYPE_ORDER[a.type]??9)-(SHAKE_TYPE_ORDER[b.type]??9));
   revealedCards.forEach(c=>{
     const el = makeCardEl(c, true);
     el.classList.add('shake-reveal-card');
