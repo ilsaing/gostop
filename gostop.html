@@ -73,10 +73,11 @@
   #startBtn:active{transform:scale(.98);}
 
   #game{display:none; width:100%; max-width:440px; flex-direction:column; align-items:center;}
-  .topbar{width:100%; display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); margin-bottom:8px; padding:0 0 0 2px;}
-  .cum-scores{display:flex; align-items:center; gap:10px; font-weight:700;}
+  .topbar{width:100%; display:flex; flex-wrap:wrap; row-gap:4px; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); margin-bottom:8px; padding:0 0 0 2px;}
+  .topbar > div:first-child{white-space:nowrap;}
+  .cum-scores{display:flex; flex-wrap:wrap; align-items:center; gap:10px; row-gap:4px; font-weight:700;}
   .cum-scores span.me{color:var(--gold);}
-  .cum-scores > span{display:inline-flex; align-items:center; gap:4px;}
+  .cum-scores > span{display:inline-flex; align-items:center; gap:4px; white-space:nowrap;}
   .exit-btn{flex-shrink:0; margin-left:8px; width:74px; height:27px; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:3px; padding:0 5px; border-radius:7px; border:1px solid #4a2a2a; background:#2a1414; color:var(--muted); font-size:11px; line-height:1; cursor:pointer;}
   .exit-btn:active{transform:scale(.95);}
   #topExitBtn{margin:0;}
@@ -2769,6 +2770,20 @@ function assessGoStopFactors(playerIdx){
         groups.get(k).count++;
       });
 
+      // 상대가 손패로 이 월을 먹고 나면(패 한 장 냄) 곧바로 덱을 한 장 뒤집는데, 바닥에 아직
+      // "누구 것도 아닌" 다른 월 패가 많이 깔려 있을수록 그 뒤집은 패가 그 중 하나와 겹쳐
+      // 추가로 먹어가는(따닥류 연쇄) 위험이 커진다. 정확한 확률 대신, 다른 바닥 월들에 아직
+      // 안 보이는 패의 개수 × 그 패들이 손패가 아닌 덱에 있을 대략적인 비중으로 보수적으로
+      // 추정한다(중복·순서 효과는 무시하고 작은 배율로만 반영).
+      let chainProb = 0;
+      if(G.deck.length>1){
+        const otherFloorHidden = [...new Set(floor.filter(x=>!x.isBonus && x.month!==f.month).map(x=>x.month))]
+          .reduce((s,m)=>s+hiddenCardTypesForMonth(m, allCaptured, floor, ownHand).length, 0);
+        const remainingForChain = Math.max(1, unknownCount-oppHandSize-1);
+        const chainDeckShare = G.deck.length/remainingForChain;
+        chainProb = Math.min(0.6, otherFloorHidden*chainDeckShare*0.35);
+      }
+
       groups.forEach(({card:match,count})=>{
         const handProb = probabilityHasType(count);
         const remainingUnknown = Math.max(1, unknownCount-oppHandSize);
@@ -2785,7 +2800,9 @@ function assessGoStopFactors(playerIdx){
         // +3점 이상(고 전) / +1점 이상(고 후)의 실제 점수 증가를 기본 축으로 하고,
         // 5점짜리 고도리처럼 한 번에 큰 점수가 나는 경우는 위험도를 조금 더 높인다.
         const certaintyBoost = gain>=5 ? 1.35 : (gain>=3 ? 1.15 : 1);
-        const threat = gain*captureProb*certaintyBoost;
+        let threat = gain*captureProb*certaintyBoost;
+        // 연쇄로 추가로 먹는 패는 보수적으로 피 한 장(평균 1점) 수준으로 어림해 더한다.
+        if(chainProb>0) threat += captureProb*chainProb*1;
         if(threat>best) best=threat;
       });
     });
