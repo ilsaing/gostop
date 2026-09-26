@@ -80,6 +80,11 @@
   .cum-scores > span{display:inline-flex; align-items:center; gap:4px; white-space:nowrap;}
   .exit-btn{flex-shrink:0; margin-left:8px; width:74px; height:27px; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:3px; padding:0 5px; border-radius:7px; border:1px solid #4a2a2a; background:#2a1414; color:var(--muted); font-size:11px; line-height:1; cursor:pointer;}
   .exit-btn:active{transform:scale(.95);}
+  /* topExitBtn처럼 top-gallery-btn과 exit-btn을 동시에 쓰는 버튼은 position:absolute로
+     top:50%+translateY(-50%)를 이용해 세로 중앙 정렬을 하는데, 위 .exit-btn:active 규칙이
+     더 뒤에 있어 눌렀을 때 translateY(-50%)가 사라져 버튼이 순간 위로 튀는 문제가 있었다.
+     클래스 두 개를 모두 쓰는 선택자로 명시해 우선 적용되게 한다. */
+  .top-gallery-btn.exit-btn:active{transform:translateY(-50%) scale(.95);}
   #topExitBtn{margin:0;}
   #topExitBtn:active{transform:translateY(-50%) scale(.95);}
 
