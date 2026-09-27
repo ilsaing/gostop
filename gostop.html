@@ -2564,7 +2564,24 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
   }
 
   let pool = hand.filter(c=>!tripleMonths.has(c.month));
-  if(pool.length===0) pool = hand.slice(); // 손패 전부가 폭탄 대기 조합뿐이면 어쩔 수 없이 그중에서 고른다
+  if(pool.length===0){
+    pool = hand.slice(); // 손패 전부가 폭탄 대기 조합뿐이면 어쩔 수 없이 그중에서 고른다
+  } else if(tripleMonths.size>0){
+    // 폭탄을 기다리며 3장을 계속 쥐고 있으면 매 턴 다른 카드를 대신 버려야 한다. 그런데
+    // 4번째 패가 언제 나올지 모르는 낮은 확률의 폭탄 하나를 위해 그보다 훨씬 값진 카드
+    // (쌍피·광 등)를 반복해서 계속 내주는 것은 손해다 — 애초에 이 3장 중 아무 거나 한 장만
+    // 내도 흔들기는 자동으로 확정되어(승리 시 x2 배율은 그대로) 보존되므로, 폭탄을 포기하고
+    // 지금 흔들기로 확정 짓는 것도 나쁘지 않은 대안이다. 지금 대신 버려야 할 가장 싼
+    // 대체 카드가 이 3장 중 가장 싼 카드보다 확연히(BOMB_WAIT_MARGIN 이상) 비싸다면, 계속
+    // 기다리는 대가가 너무 크다고 보고 이 3장 중 가장 싼 카드를 버릴 후보로 되돌려 놓는다.
+    const BOMB_WAIT_MARGIN = 2;
+    const altMin = Math.min(...pool.map(c=>cardWeight(c,playerIdx)));
+    for(const m of tripleMonths){
+      const cheapest = hand.filter(c=>c.month===m)
+        .reduce((a,b)=>cardWeight(b,playerIdx)<cardWeight(a,playerIdx)?b:a);
+      if(altMin > cardWeight(cheapest,playerIdx) + BOMB_WAIT_MARGIN) pool.push(cheapest);
+    }
+  }
 
   let bestDiscard=null, bestDiscardScore=null;
   for(const card of pool){
