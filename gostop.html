@@ -2338,6 +2338,14 @@ function shouldPlayBonusNow(hand, floor, playerIdx){
 
   return true; // 위험이 없다면 평소처럼 바로 낸다
 }
+/* 손에 같은 월 카드가 여러 장이면 그 카드들의 실질 가치를 할인한다 — 한 번에 바닥 패와
+   짝지어 쓸 수 있는 건 한 장뿐이고 나머지는 대기 상태라 활용도가 떨어진다(3장이면 흔들기
+   확정용으로도 쓸 수 있으므로 너무 깎지는 않는다). 버릴 패를 고를 때만 쓴다. */
+const SAME_MONTH_DISCOUNT = {1:1, 2:0.85, 3:0.7}; // 4장은 총통(즉시 승리)이라 해당 없음
+function discountedWeight(card, hand, playerIdx){
+  const n = hand.filter(c=>c.month===card.month).length;
+  return cardWeight(card,playerIdx) * (SAME_MONTH_DISCOUNT[Math.min(n,3)] || 1);
+}
 function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
   excludeMonths = excludeMonths || null;
   if(shouldPlayBonusNow(hand, floor, playerIdx)){
@@ -2574,12 +2582,12 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
     // 지금 흔들기로 확정 짓는 것도 나쁘지 않은 대안이다. 지금 대신 버려야 할 가장 싼
     // 대체 카드가 이 3장 중 가장 싼 카드보다 확연히(BOMB_WAIT_MARGIN 이상) 비싸다면, 계속
     // 기다리는 대가가 너무 크다고 보고 이 3장 중 가장 싼 카드를 버릴 후보로 되돌려 놓는다.
-    const BOMB_WAIT_MARGIN = 2;
-    const altMin = Math.min(...pool.map(c=>cardWeight(c,playerIdx)));
+    const BOMB_WAIT_MARGIN = 0.5;
+    const altMin = Math.min(...pool.map(c=>discountedWeight(c,hand,playerIdx)));
     for(const m of tripleMonths){
       const cheapest = hand.filter(c=>c.month===m)
-        .reduce((a,b)=>cardWeight(b,playerIdx)<cardWeight(a,playerIdx)?b:a);
-      if(altMin > cardWeight(cheapest,playerIdx) + BOMB_WAIT_MARGIN) pool.push(cheapest);
+        .reduce((a,b)=>discountedWeight(b,hand,playerIdx)<discountedWeight(a,hand,playerIdx)?b:a);
+      if(altMin > discountedWeight(cheapest,hand,playerIdx) + BOMB_WAIT_MARGIN) pool.push(cheapest);
     }
   }
 
@@ -2658,8 +2666,11 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
     // 내버릴 수 있다(위 캡처 판단의 blockRisk가 taken의 cardWeight를 더해 이미 보정하는 것과
     // 같은 문제). 버릴 패를 고를 때도 카드 자체의 원가치를 두 축(상대에게 줄 때/내가 쥐고
     // 있을 때) 모두에 더해, 문턱 신호가 약하더라도 비싼 카드가 우선 버려지지 않게 한다.
-    oppRisk += cardWeight(card,playerIdx) * 0.2;
-    mineVal += cardWeight(card,playerIdx) * 0.2;
+    // 같은 월 카드를 손에 여러 장 쥐고 있으면 그중 한 장만 바닥 패와 짝지어 쓸 수 있어
+    // 나머지는 활용도가 떨어지므로, 원가치에 할인율을 적용해 버릴 후보로 더 쉽게 올라오게 한다.
+    const dw = discountedWeight(card,hand,playerIdx);
+    oppRisk += dw * 0.2;
+    mineVal += dw * 0.2;
     // 쪽으로 상대의 피를 뺏어올 수 있다면 그만큼 이 카드를 버리는 게 안전하다(위험이 아니라
     // 방어 수단)고 본다. 예전엔 이 신호가 마지막 타이브레이커(w)에만 있어서 oppRisk·mineVal이
     // 이미 갈린 대다수 상황에서는 전혀 작동하지 않았다 — oppRisk에도 일부(0.3) 반영해 더
@@ -2667,7 +2678,7 @@ function aiChooseHandCard(hand, floor, allCaptured, playerIdx, excludeMonths){
     // 상대에게서 뺏어오는 피는 더 가치있게" 가중하는 방안도 같이 시도했으나, 그 조건(동점
     // 시점에 상대가 고를 부른 상태)이 너무 드물게 겹쳐(1000판 중 17번) 추가 효과가 없어 기각.
     oppRisk -= jjokBonus * 0.3;
-    const w = cardWeight(card,playerIdx) - jjokBonus;
+    const w = dw - jjokBonus;
     const better = !bestDiscardScore
       || oppRisk<bestDiscardScore.oppRisk
       || (oppRisk===bestDiscardScore.oppRisk && mineVal<bestDiscardScore.mineVal)
