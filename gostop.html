@@ -317,8 +317,50 @@
   #overlayBody{font-size:12.5px; color:var(--cream); text-align:left; line-height:1.8; margin-bottom:18px; background:var(--panel-darker); border-radius:8px; padding:10px 12px;}
   #overlayBtns{display:flex; gap:8px;}
   #overlayBtns button{flex:1; padding:12px; border-radius:9px; border:none; font-weight:700; font-size:14px; cursor:pointer;}
+  /* 로그 복사 버튼은 판 결과 팝업에서만 표시한다. 게임 종료/나가기 확인 팝업에서는 숨긴다. */
+  #overlayCard:not(.round-result-overlay) #roundLogCopyBtn{display:none !important;}
+  #overlayCard.round-result-overlay #overlayBody{margin-bottom:6px;}
+  #overlayCard.round-result-overlay #roundLogCopyBtn{margin:0 0 6px !important;}
   .ov-primary{background:linear-gradient(180deg,#f0cf7c,var(--gold)); color:#20200a;}
   .ov-secondary{background:#3a2418; color:var(--cream); border:1px solid #5a3a24;}
+
+  /* 휴대폰 가로모드 결과 팝업은 세로 공간이 매우 짧으므로, 점수난 먹은 패는 숨기고
+     전체 로그 복사 버튼을 결과 제목 옆의 작은 버튼으로 배치한다. */
+  @media (min-width:780px) and (max-width:1439px) and (orientation:landscape){
+    #overlayCard.round-result-overlay{
+      position:relative;
+      padding:14px 14px 12px;
+      max-height:calc(100vh - 16px);
+      overflow:hidden;
+    }
+    #overlayCard.round-result-overlay #overlayTitle{
+      margin:0 92px 8px 0;
+      padding:0;
+    }
+    #overlayCard.round-result-overlay #overlayScoreCards{ display:none !important; }
+    #overlayCard.round-result-overlay #roundLogCopyBtn{
+      position:absolute !important;
+      top:10px !important;
+      right:10px !important;
+      width:auto !important;
+      margin:0 !important;
+      padding:6px 8px !important;
+      border-radius:7px !important;
+      font-size:10px !important;
+      white-space:nowrap;
+    }
+    #overlayCard.round-result-overlay #overlayBody{
+      margin-bottom:4px;
+      padding:8px 10px;
+      line-height:1.6;
+    }
+    #overlayCard.round-result-overlay #overlayBody{
+      margin-bottom:2px;
+    }
+    #overlayCard.round-result-overlay #roundLogCopyBtn{
+      margin-bottom:4px !important;
+    }
+  }
 
   /* 확대된 양쪽 열과 중앙 바닥패 공간을 확보할 수 있는 1440px부터 150% 확대 + 가로 3단 배치.
      min-width 문턱(1440px): body에 zoom:1.5가 걸려 있어 레이아웃 자체는 실제 뷰포트가 아니라
@@ -647,6 +689,7 @@
   <div id="overlayCard">
     <div id="overlayTitle"></div>
     <div id="overlayBody"></div>
+    <button type="button" id="roundLogCopyBtn" onclick="uiCopyRoundLog()" style="width:100%; margin:0 0 8px; padding:9px 12px; border-radius:9px; border:1px solid var(--border); background:var(--panel-dark); color:var(--cream); font-weight:700; font-size:12px; cursor:pointer;">📋 로그 복사</button>
     <div id="overlayBtns"></div>
     <div id="overlayAutoBadge" style="display:none; margin-top:10px; text-align:center; color:var(--gold); font-size:12px; font-weight:700;"></div>
   </div>
@@ -2778,7 +2821,7 @@ function assessGoStopFactors(playerIdx){
       return 1-comb(unknownCount-count,oppHandSize)/Math.max(comb(unknownCount,oppHandSize),1);
     };
     const typeKey = c=>[c.type,c.ttiType||'',c.bird?1:0,c.flexible?1:0].join('|');
-    let best=0;
+    let best=0, hitP=0, hitG=0, hitExp=0;
     const handledPpeokMonths = new Set();
 
     floor.forEach(f=>{
@@ -2839,12 +2882,14 @@ function assessGoStopFactors(playerIdx){
         // 연쇄로 추가로 먹는 패는 보수적으로 피 한 장(평균 1점) 수준으로 어림해 더한다.
         if(chainProb>0) threat += captureProb*chainProb*1;
         if(threat>best) best=threat;
+        // 고박 손익 계산용: 기대 득점(점수×확률)이 가장 큰 단일 이벤트의 확률/점수를 따로 기억한다.
+        if(gain*captureProb>hitExp){ hitExp=gain*captureProb; hitP=captureProb; hitG=gain; }
       });
     });
-    return best;
+    return {threat:best, p:hitP, g:hitG};
   }
 
-  let oppThreat = 0;
+  let oppThreat = 0, hitP = 0, hitL = 0, worstHitExp = 0;
   for(let i=0;i<3;i++){
     if(i===playerIdx) continue;
     let threat = computeScore(G.captured[i]).total;
@@ -2855,8 +2900,17 @@ function assessGoStopFactors(playerIdx){
 
     // 상대 손패는 보지 않고, 공개 정보와 카드 잔존 가능성으로 다음 턴 득점 가능성을 추정한다.
     // 고를 안 한 상대는 +3점 이상, 이미 고를 한 상대는 +1점 이상일 때만 즉시 위협으로 본다.
-    const immediateThreat = opponentImmediateScoreThreat(playerIdx, i);
+    const imm = opponentImmediateScoreThreat(playerIdx, i);
+    const immediateThreat = imm.threat;
     if(immediateThreat>0) threat += immediateThreat;
+    // 내가 고를 부른 뒤 이 상대가 점수를 내고 스톱하면, 나머지 한 명이 고를 안 불렀을 때 그 몫까지 내가 물게 된다(고박).
+    // 그래서 '확률×점수'가 같아도 내 손실은 2배다. 고/스톱 손익 비교(aiDecideGoStop)에 쓰도록 최악 케이스를 기억한다.
+    if(imm.p>0){
+      const third = [0,1,2].find(x=>x!==playerIdx && x!==i);
+      const gobak = G.goCount[third]===0 && (G.captured[third]||[]).length>0;
+      const L = imm.g*(gobak?2:1);
+      if(imm.p*L>worstHitExp){ worstHitExp=imm.p*L; hitP=imm.p; hitL=L; }
+    }
     // 보너스 카드 자체는 일반 월 카드처럼 "짝"으로 추적할 수 없으므로 기존의 보너스 위험 신호를 유지한다.
     // 뻑 더미의 점수 위협은 위의 공통 즉시 득점 계산에 포함되므로 별도로 중복 가산하지 않는다.
     if(bonusIsRisk){
@@ -2937,7 +2991,7 @@ function assessGoStopFactors(playerIdx){
   }
   upside = Math.max(0, Math.min(1, upside));
 
-  return {oppRisk, myPotential, upside};
+  return {oppRisk, myPotential, upside, hitP, hitL};
 }
 /* 지금 스톱한다고 가정했을 때(실제로 상태를 바꾸지 않고) 각자의 코인이 어떻게 되는지
    finalizeRound와 동일한 정산 규칙(고박·광박·피박·배율)으로 미리 계산해본다. */
@@ -2992,7 +3046,7 @@ function aiDecideGoStop(score, deckRemaining, playerIdx){
     return 'go'; // 지금 끝내면 내가 진다 — 판을 끝내지 말고 역전을 노리거나 상황이 바뀔 때까지 이어간다
   }
   if(score.total>=15) return 'stop'; // 13→15: 시뮬레이션 튜닝 — 무조건 스톱하는 점수 기준을 조금 늦춤
-  const {oppRisk, myPotential, upside} = assessGoStopFactors(playerIdx);
+  const {oppRisk, myPotential, upside, hitP, hitL} = assessGoStopFactors(playerIdx);
   const deckPenalty = (1-deckRemaining/21)*0.15; // 덱이 거의 바닥나면 나가리 위험까지 감안해 스톱 쪽으로 기움 (0.366→0.15: 시뮬레이션 튜닝, 막판이라고 무조건 스톱 쪽으로 과하게 기울지 않도록)
   let goChance = 0.23 - oppRisk*1.1 + myPotential*0.45 + upside*0.4 - deckPenalty; // 0.15→0.23: 헤드리스 시뮬레이션 튜닝(비대칭 자기대국+공통시드 페어링, 라운드 EV N=12000·매치 승률 N=3000 양쪽 검증, z=3~4) — 상대 위협은 더 크게, 내 잠재력·업사이드는 더 적극적으로 반영
   // 게임의 최종 목표는 이번 판을 이기는 게 아니라 파산하지 않고 최종적으로 더 부유하게 남는 것이다.
@@ -3005,7 +3059,18 @@ function aiDecideGoStop(score, deckRemaining, playerIdx){
     const relStanding = (myCoins-avgOthers)/total; // 양수=앞섬, 음수=뒤처짐
     goChance += -relStanding * 0.3;
   }
-  goChance = Math.max(0.05, Math.min(0.9, goChance));
+  /* 손익분기 점검(고박 반영): 지금 스톱하면 S를 확정으로 받고, 고를 하면 살아남을 때 약 d(=점수 1점 몫)만큼 더 받는 대신
+     상대가 다음 턴에 점수를 내면(확률 hitP) 내가 L(고박이면 2인분)을 물어낸다.
+     EV(go) >= S 이려면 hitP <= d/(S+d+L). 이 손익분기 확률을 넘으면 넘은 비율의 제곱만큼 goChance를 깎는다.
+     (기존 oppRisk는 선형 가산이라 myPotential·upside에 쉽게 상쇄돼 고도리 직전에도 고를 부르던 문제 보완) */
+  let hitPenalized = false;
+  if(hitP>0){
+    const S = Math.max(0, stopSim.newCoins[playerIdx]-G.coins[playerIdx]);
+    const d = S/Math.max(1, score.total+G.goCount[playerIdx]);
+    const pBreak = d/Math.max(0.0001, S+d+hitL);
+    if(hitP>pBreak){ goChance *= Math.pow(pBreak/hitP, 2); hitPenalized = true; }
+  }
+  goChance = Math.max(hitPenalized?0.01:0.05, Math.min(0.9, goChance));
   return Math.random()<goChance ? 'go' : 'stop';
 }
 
@@ -3478,6 +3543,39 @@ function uiCopyLog(){
   const fallbackCopy = ()=>{
     const ta = document.createElement('textarea');
     ta.value = text;
+    ta.style.position='fixed'; ta.style.left='-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta);
+    showCopied();
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(showCopied).catch(fallbackCopy);
+  } else {
+    fallbackCopy();
+  }
+}
+/* 판 종료 결과 팝업에서 이번 판에 쌓인 전체 로그를 한 번에 복사한다.
+   화면의 로그 패널은 높이가 제한되어 있어도 G.log에는 해당 라운드 전체가 그대로 남아 있으므로
+   DOM의 현재 표시 영역이 아니라 G.log 자체를 복사해야 처음부터 끝까지 빠짐없이 전달할 수 있다. */
+function uiCopyRoundLog(){
+  const btn = document.getElementById('roundLogCopyBtn');
+  const text = G && Array.isArray(G.log) ? G.log.map(m=>{
+    const div=document.createElement('div');
+    div.innerHTML=m;
+    return div.innerText;
+  }).join('\n') : '';
+  if(!text) return;
+  const original = btn ? btn.textContent : '';
+  const showCopied = ()=>{
+    if(!btn) return;
+    btn.textContent='✓ 로그 복사됨';
+    setTimeout(()=>{ btn.textContent=original; }, 1200);
+  };
+  const fallbackCopy = ()=>{
+    const ta=document.createElement('textarea');
+    ta.value=text;
     ta.style.position='fixed'; ta.style.left='-9999px';
     document.body.appendChild(ta);
     ta.select();
@@ -4576,7 +4674,7 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
     if(playerIdx===HUMAN) G.phase='resolving';
     resolvePlayAsync(G, playerIdx, drawn, (res)=>{
       logPlayResult(playerIdx, drawn, res, true);
-      const isTtadak = !!(handCard && handRes.captured && res.captured && drawn.month===handCard.month && hasMoreTurns(playerIdx));
+      const isTtadak = !!(handCard && handRes.pendingMatches && handRes.pendingMatches.length===2 && res.captured && drawn.month===handCard.month && hasMoreTurns(playerIdx));
       const isJjok = !!(handCard && !handRes.captured && !handRes.pendingMatches && res.captured && drawn.month===handCard.month && hasMoreTurns(playerIdx));
       const finish=()=>{
         clearBonusFlyers();
@@ -5226,6 +5324,7 @@ function renderCapturedGrid(el, cards, highlightIds, maxPerLine){
 /* textContent에 쓸 이름 — 사람 플레이어는 innerHTML-이스케이프 되지 않은 원본을 그대로 보여준다. */
 function displayName(i){ return i===HUMAN ? PLAYER_RAW_NAME : PLAYER_NAMES[i]; }
 function showRoundEndOverlay(winnerIdx, baseScore, goCount, multiplier, finalScore, results, byExhaustion){
+  document.getElementById('overlayCard').classList.add('round-result-overlay');
   const title = byExhaustion ? (displayName(winnerIdx)+' 고 자동승리') : (displayName(winnerIdx)+' 스톱! 승리');
   let body = '<b>'+PLAYER_NAMES[winnerIdx]+'</b> 기본 '+baseScore.total+'점';
   if(baseScore.detail.length) body += ' ('+baseScore.detail.join(', ')+')';
@@ -5278,6 +5377,7 @@ function showRoundEndOverlay(winnerIdx, baseScore, goCount, multiplier, finalSco
   armOverlayAutoTimer(()=>nextBtn.onclick());
 }
 function showGameOverOverlay(roundWinnerIdx, results){
+  document.getElementById('overlayCard').classList.remove('round-result-overlay');
   const short = results.find(r=>r.actualPay<r.pay || G.coins[r.idx]<=0);
   let finalIdx=0;
   for(let i=1;i<3;i++) if(G.coins[i]>G.coins[finalIdx]) finalIdx=i;
@@ -5297,6 +5397,7 @@ function showGameOverOverlay(roundWinnerIdx, results){
   armOverlayAutoTimer(()=>newBtn.onclick());
 }
 function showVoidOverlay(hadVoidedLeader){
+  document.getElementById('overlayCard').classList.remove('round-result-overlay');
   document.getElementById('overlayTitle').textContent='나가리 (유찰)';
   const msg = hadVoidedLeader
     ? '고를 부른 뒤 추가 득점 없이 패가 소진되어, 점수를 앞서던 사람의 점수가 무효 처리됐습니다.<br>이 판은 무효 처리되며, 금액 변동 없이 기존 순서대로 다음 판을 진행합니다.'
@@ -5334,6 +5435,7 @@ function uiResetGame(){
   updateAutoPlayPauseBtn();
 }
 function uiExitGame(onCancel){
+  document.getElementById('overlayCard').classList.remove('round-result-overlay');
   document.querySelectorAll('.flyer-card').forEach(el=>el.remove());
   if(AUTO_PLAY_ENABLED && !AUTO_PLAY_PAUSED){
     AUTO_PLAY_PAUSED = true;
