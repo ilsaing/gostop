@@ -4697,7 +4697,12 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
       // 이 중 해당하는 것 하나만 골라 피 보상 애니메이션을 재생하고 나서 다음으로 넘어간다.
       const afterBonus=()=>{
         if(handRes.ppeokPending || res.ppeokPending){
-          resolvePpeokBonus(playerIdx, true, finish);
+          // 손패로 뻑을 먹고 덱에서 뒤집은 패로 또 다른 뻑을 먹었다면 보상도 각각 따로(총 2장씩) 받는다.
+          if(handRes.ppeokPending && res.ppeokPending){
+            resolvePpeokBonus(playerIdx, true, ()=>resolvePpeokBonus(playerIdx, true, finish));
+          } else {
+            resolvePpeokBonus(playerIdx, true, finish);
+          }
         } else if(isTtadak){
           const gains = ttadakGains(playerIdx);
           if(gains.length>0){
