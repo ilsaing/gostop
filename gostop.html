@@ -4175,6 +4175,80 @@ function moveFlyerVisual(flyer, from, to, duration, onDone){
   });
   setTimeout(()=>{ if(onDone) onDone(flyer); }, duration+20);
 }
+/* ── 바닥에 그냥 놓이는 카드(덱에서 뒤집은 패 / 짝이 없는 손패)가 월 순서로 정렬된 자리로
+   자연스럽게 이동하도록 돕는 함수들 ──
+   이런 카드는 뒤집힌 자리(floorRevealAnchor)에 분신(flyer)으로 떠 있고, 실제 바닥패는
+   월 순서로 정렬된 다른 자리에 놓인다. 예전에는 render()로 실제 카드를 정렬 위치에 그리고
+   바로 분신을 지워서 "순간이동"하거나, 그 사이에 다른 render()가 끼어들면 분신과 실제
+   카드가 동시에 보였다. 이제는 ① 분신이 떠 있는 동안 render()가 같은 카드를 숨기고,
+   ② 정렬된 최종 자리를 먼저 잡아 분신이 그 자리까지 실제로 날아가게 하며,
+   ③ 정렬로 밀려나는 기존 바닥패들도 FLIP 방식으로 부드럽게 옮겨간다. */
+function floorCardEls(){
+  const c = document.getElementById('floorCards');
+  return c ? Array.from(c.querySelectorAll('.card')) : [];
+}
+function snapshotFloorRects(){
+  const m = new Map();
+  floorCardEls().forEach(el=>{
+    const r = el.getBoundingClientRect();
+    m.set(el.dataset.cardId, {x:r.left, y:r.top});
+  });
+  return m;
+}
+function playFloorReflow(snap, skipIds){
+  const zf = currentZoomFactor();
+  const moved = [];
+  floorCardEls().forEach(el=>{
+    const id = el.dataset.cardId;
+    if(skipIds.has(id)) return;
+    const p = snap.get(id);
+    if(!p) return;
+    const r = el.getBoundingClientRect();
+    const dx = (p.x - r.left)/zf, dy = (p.y - r.top)/zf;
+    if(Math.abs(dx)<1 && Math.abs(dy)<1) return;
+    el.style.transition = 'none';
+    el.style.transform = 'translate('+dx+'px,'+dy+'px)';
+    moved.push(el);
+  });
+  if(!moved.length) return;
+  void document.body.offsetWidth;
+  moved.forEach(el=>{ el.style.transition='transform .38s ease'; el.style.transform=''; });
+  setTimeout(()=>moved.forEach(el=>{ el.style.transition=''; }), 440);
+}
+function registerFloatingFlyer(card, flyer){
+  if(!G || !card || !flyer) return;
+  if(!G.floatingFlyers) G.floatingFlyers = new Map();
+  G.floatingFlyers.set(String(card.id), flyer);
+}
+function landFlyersOnFloor(items, onDone){
+  const mySession = gameSession;
+  const live = (items||[]).filter(it=>it && it.flyer && it.flyer.isConnected);
+  if(!G){ live.forEach(it=>it.flyer.remove()); return; }
+  if(!live.length){ render(); if(onDone) onDone(); return; }
+  const snap = snapshotFloorRects();
+  live.forEach(it=>registerFloatingFlyer(it.card, it.flyer));
+  render(); // 정렬된 최종 배치를 먼저 그린다(분신이 떠 있는 카드는 render가 숨겨 둔다)
+  const ids = new Set(live.map(it=>String(it.card.id)));
+  playFloorReflow(snap, ids);
+  let pending = live.length;
+  const done = ()=>{
+    if(--pending>0) return;
+    live.forEach(it=>{
+      if(G && G.floatingFlyers) G.floatingFlyers.delete(String(it.card.id));
+      it.flyer.remove();
+    });
+    if(G && gameSession===mySession){
+      floorCardEls().forEach(el=>{ if(ids.has(el.dataset.cardId)) el.style.visibility=''; });
+      if(onDone) onDone();
+    }
+  };
+  live.forEach(it=>{
+    const el = floorCardEls().find(e=>e.dataset.cardId===String(it.card.id));
+    const to = el && rectAnchor(el);
+    if(!to){ done(); return; }
+    moveFlyerVisual(it.flyer, to, to, 380, done);
+  });
+}
 /* 호출 시점엔 이미 G.captured/G.floor가 이번 캡처를 반영해 변경된 상태다(호출부가 먼저
    performCapture 등으로 데이터를 바꾼 뒤 이 함수를 부른다). 그래서 먼저 render()로 최종
    배치를 실제로 그려버리되, 지금 날아가는 중인 카드들만 화면에서 숨겨뒀다가, 각자 플라이어가
@@ -4298,11 +4372,13 @@ function playBonusHandCard(playerIdx, card){
 }
 function afterHandResolved(playerIdx, card, handRes, playedFlyer, playedTarget){
   const deferRenderUntilCaptureAnimation = !handRes.deferred && handRes.captured;
-  const finish=()=>{
+  const finish=(delay)=>{
     if(playerIdx===HUMAN) G.phase='drawing';
     if(!deferRenderUntilCaptureAnimation) render();
-    safeTimeout(()=>doDraw(playerIdx, card, handRes), 650);
+    safeTimeout(()=>doDraw(playerIdx, card, handRes), delay||650);
   };
+  // 짝이 없어 그냥 바닥에 놓이는 손패: 분신이 정렬된 자리까지 자연스럽게 이동한 뒤 덱을 뒤집는다.
+  const landHandCard = !handRes.deferred && !handRes.captured && !handRes.pendingMatches && playedFlyer && playedFlyer.isConnected;
   if(!handRes.deferred){
     logPlayResult(playerIdx, card, handRes);
     if(handRes.captured){
@@ -4313,6 +4389,10 @@ function afterHandResolved(playerIdx, card, handRes, playedFlyer, playedTarget){
   } else {
     handRes.captureFrom = playedTarget || floorAnchor();
     handRes.playedFlyer = playedFlyer;
+  }
+  if(landHandCard){
+    landFlyersOnFloor([{card, flyer:playedFlyer}], ()=>finish(250));
+    return;
   }
   if(playedFlyer && !handRes.captured && !handRes.deferred) playedFlyer.remove();
   finish();
@@ -4332,9 +4412,9 @@ function aiPlayTurn(playerIdx, excludeMonths, fallbackBomb){
     autoShakeOnPlay(playerIdx, hand, card);
     const idx=hand.indexOf(card);
     hand.splice(idx,1);
-    if(card.isBonus){ playBonusHandCard(playerIdx, card); return; }
+    if(card.isBonus){ if(playedFlyer) playedFlyer.remove(); playBonusHandCard(playerIdx, card); return; }
     playHandCard(G, playerIdx, card, (handRes)=>afterHandResolved(playerIdx, card, handRes, playedFlyer, landing));
-  }, false, hasFloorMatch);
+  }, false, true);
 }
 function humanPlayCard(cardId){
   if(!G || G.roundOver) return;
@@ -4366,12 +4446,12 @@ function playSingleCard(cardId){
   const hasFloorMatch = G.floor.some(c=>c.month===card.month);
   flyCardVisual(card, from, landing, 380, (playedFlyer)=>{
     if(!G) return;
-    if(card.isBonus){ playBonusHandCard(HUMAN, card); return; }
+    if(card.isBonus){ if(playedFlyer) playedFlyer.remove(); playBonusHandCard(HUMAN, card); return; }
     playHandCard(G, HUMAN, card, (handRes)=>afterHandResolved(HUMAN, card, handRes, playedFlyer, landing));
     // 바닥에 같은 월이 여럿이라 선택 대기 상태가 됐다면, 실제 바닥 카드가 이미 그려졌으므로
     // 날아온 분신은 바로 지운다 — 같은 카드가 두 군데(분신+실제 카드) 겹쳐 보이지 않도록.
     if(G.phase==='choosingCapture' && playedFlyer) playedFlyer.remove();
-  }, false, hasFloorMatch);
+  }, false, true);
 }
 /* 다른 두 명에게서 피를 1장씩 받는다. 각자에게서 실제로 받아오는 애니메이션이 모두 끝난 뒤
    onDone(gains)를 호출한다 — gains는 실제로 줄 피가 있어서 받아온 상대의 인덱스 목록. */
@@ -4508,10 +4588,14 @@ function doDraw(playerIdx, handCard, handRes){
         revealedBonusCards.push(drawn);
         G.floor.push(drawn);
         addLog(PLAYER_NAMES[playerIdx]+': 덱에서 보너스 카드가 나와 한 장 더 뒤집습니다.');
-        render();
-        if(drawnFlyer) drawnFlyer.remove();
-        step();
+        if(drawnFlyer && drawnFlyer.isConnected){
+          landFlyersOnFloor([{card:drawn, flyer:drawnFlyer}], step);
+        } else {
+          render();
+          step();
+        }
       } else {
+        if(drawnFlyer) registerFloatingFlyer(drawn, drawnFlyer);
         // 뒤집은 패가 바닥의 어떤 패와 월이 같아(뻑 포함) 나중에 처리될지 이미 알 수 있으므로,
         // 여기서 곧장 그 바닥패와 겹치는 위치로 옮겨 대기시켜 둔다. 실제로 패널로 보내는 건
         // doDrawResolve가 순서(보너스 → 손패 캡처 → 뽑은 패 캡처)에 맞춰 이어서 처리한다.
@@ -4600,11 +4684,11 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
         finalizeRound(playerIdx, score);
         return;
       }
-      if(handRes.playedFlyer) handRes.playedFlyer.remove();
-      if(drawnFlyer) drawnFlyer.remove();
       clearBonusFlyers();
-      render();
-      showPpeokFormedToast(playerIdx, ()=>resolveFlexThenAfterTurn(playerIdx, false));
+      landFlyersOnFloor([{card:handRes.card, flyer:handRes.playedFlyer},{card:drawn, flyer:drawnFlyer}], ()=>{
+        render();
+        showPpeokFormedToast(playerIdx, ()=>resolveFlexThenAfterTurn(playerIdx, false));
+      });
       return;
     }
     // 뻑이 아니었으므로 보류했던 손패 캡처를 지금 확정하고, 뽑은 패는 별도로 처리
@@ -4625,7 +4709,7 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
             const finish2=()=>{ render(); safeTimeout(()=>resolveFlexThenAfterTurn(playerIdx, true), 550); };
             const afterBonus2=()=>resolvePpeokBonus(playerIdx, res2.ppeokPending, finish2);
             if(res2.captured) animateDrawnCapture(playerIdx, drawn, res2, afterBonus2, drawnFlyer);
-            else { if(drawnFlyer) drawnFlyer.remove(); afterBonus2(); }
+            else landFlyersOnFloor([{card:drawn, flyer:drawnFlyer}], afterBonus2);
           });
           // 바닥에 같은 월이 여럿이라 선택 대기 상태가 됐다면, 실제 바닥 카드가 이미 그려졌으므로
           // 날아온 분신은 바로 지운다 — 같은 카드가 두 군데(분신+실제 카드) 겹쳐 보이지 않도록.
@@ -4733,7 +4817,7 @@ function doDrawResolve(playerIdx, handCard, handRes, drawn, revealedBonusCards, 
       // (실제 진행 순서: 보너스 먼저 → 손패 캡처 → 뽑은 패 캡처).
       const afterHandCapture=()=>{
         if(res.captured) animateDrawnCapture(playerIdx, drawn, res, afterBonus, drawnFlyer);
-        else { if(drawnFlyer) drawnFlyer.remove(); afterBonus(); }
+        else landFlyersOnFloor([{card:drawn, flyer:drawnFlyer}], afterBonus);
       };
       if(handRes.captureFrom){
         if(handRes.playedFlyer) handRes.playedFlyer.remove();
@@ -5110,6 +5194,8 @@ function render(){
     if(chooseCtx && card.id===chooseCtx.card.id) return; // 선택/결과 대기 중인 카드는 겹쳐진 고정 위치로 따로 그린다
     if(handPending && card.id===handPending.card.id) return;
     const el=makeCardEl(card,false);
+    const floatingFlyer = G.floatingFlyers && G.floatingFlyers.get(String(card.id));
+    if(floatingFlyer && floatingFlyer.isConnected) el.style.visibility='hidden'; // 날아오는 중인 분신이 있는 동안은 실제 카드를 숨겨 2장처럼 보이지 않게 한다
     if(chooseIds && chooseIds.has(card.id)){
       el.classList.add('selectable','choose-target');
       el.onclick=()=>chooseCaptureTarget(card.id);
